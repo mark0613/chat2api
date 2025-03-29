@@ -1,11 +1,12 @@
 import json
+import urllib.parse
 from urllib.parse import quote
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 
 from app import app, templates
-from gateway.login import login_html
+from apps.user.views import login_page
 from utils.kv_utils import set_value_for_key_list
 
 with open("templates/chatgpt_context_1.json", "r", encoding="utf-8") as f:
@@ -17,12 +18,8 @@ with open("templates/chatgpt_context_2.json", "r", encoding="utf-8") as f:
 
 @app.get("/", response_class=HTMLResponse)
 async def chatgpt_html(request: Request):
-    token = request.query_params.get("token")
-    if not token:
-        token = request.cookies.get("token")
-    if not token:
-        return await login_html(request)
-
+    # chatgpt token
+    token = request.cookies.get("token")
     if len(token) != 45 and not token.startswith("eyJhbGciOi"):
         token = quote(token)
 

@@ -76,3 +76,10 @@ async def refresh_all_tokens(force_refresh=False):
             except HTTPException:
                 pass
     logger.info("All tokens refreshed.")
+
+def get_token():
+    available_tokens = list(set(globals.token_list) - set(globals.error_token_list))
+    if available_tokens:
+        selected_token = random.choice(available_tokens)
+        return selected_token
+    return None

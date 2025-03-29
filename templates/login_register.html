@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入 / 註冊</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            width: 400px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+        }
+        
+        .form-container {
+            padding: 25px;
+        }
+        
+        .form {
+            display: none;
+        }
+        
+        .form.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        
+        .error-message {
+            color: #e53e3e;
+            font-size: 14px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #38a169;
+            font-size: 14px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" id="login-tab">登入</div>
+            <div class="tab" id="register-tab">註冊</div>
+        </div>
+        
+        <div class="form-container">
+            <div class="form active" id="login-form">
+                <div class="form-group">
+                    <label for="login-email">電子郵件</label>
+                    <input type="email" id="login-email" placeholder="請輸入您的電子郵件" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密碼</label>
+                    <input type="password" id="login-password" placeholder="請輸入您的密碼" required>
+                </div>
+                <button id="login-button">登入</button>
+                <div class="error-message" id="login-error"></div>
+            </div>
+            
+            <div class="form" id="register-form">
+                <div class="form-group">
+                    <label for="register-name">姓名</label>
+                    <input type="text" id="register-name" placeholder="請輸入您的姓名" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-email">電子郵件</label>
+                    <input type="email" id="register-email" placeholder="請輸入您的電子郵件" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密碼</label>
+                    <input type="password" id="register-password" placeholder="請設定您的密碼" required>
+                </div>
+                <button id="register-button">註冊</button>
+                <div class="error-message" id="register-error"></div>
+                <div class="success-message" id="register-success"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 存儲 redirect_url 參數
+            let redirectUrl = '{{ redirect_url }}';
+            
+            // 確保 redirect_url 是有效的
+            try {
+                if (redirectUrl && redirectUrl !== 'None') {
+                    // 解碼 URL 以檢查是否有效
+                    const decoded = decodeURIComponent(redirectUrl);
+                    // 嘗試創建 URL 對象
+                    new URL(decoded);
+                } else {
+                    redirectUrl = '';
+                }
+            } catch (e) {
+                console.error('Invalid redirect URL:', e);
+                redirectUrl = ''; // 如果無效，重設為空字串
+            }
+            
+            // Check if we need to show the register tab by default
+            const activeTab = '{{ active_tab }}' || 'login';
+            if (activeTab === 'register') {
+                document.getElementById('register-tab').click();
+            }
+            
+            // Tab switching
+            const loginTab = document.getElementById('login-tab');
+            const registerTab = document.getElementById('register-tab');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            
+            loginTab.addEventListener('click', function() {
+                loginTab.classList.add('active');
+                registerTab.classList.remove('active');
+                loginForm.classList.add('active');
+                registerForm.classList.remove('active');
+                
+                // Update URL without reloading the page
+                const params = new URLSearchParams(window.location.search);
+                const redirectUrlParam = params.get('redirect_url');
+                let newUrl = '/login';
+                if (redirectUrlParam) {
+                    newUrl += '?redirect_url=' + redirectUrlParam;
+                }
+                window.history.pushState({}, '', newUrl);
+                
+                // Clear error messages
+                document.getElementById('login-error').style.display = 'none';
+                document.getElementById('register-error').style.display = 'none';
+                document.getElementById('register-success').style.display = 'none';
+            });
+            
+            registerTab.addEventListener('click', function() {
+                registerTab.classList.add('active');
+                loginTab.classList.remove('active');
+                registerForm.classList.add('active');
+                loginForm.classList.remove('active');
+                
+                // Update URL without reloading the page
+                const params = new URLSearchParams(window.location.search);
+                const redirectUrlParam = params.get('redirect_url');
+                let newUrl = '/register';
+                if (redirectUrlParam) {
+                    newUrl += '?redirect_url=' + redirectUrlParam;
+                }
+                window.history.pushState({}, '', newUrl);
+                
+                // Clear error messages
+                document.getElementById('login-error').style.display = 'none';
+                document.getElementById('register-error').style.display = 'none';
+                document.getElementById('register-success').style.display = 'none';
+            });
+            
+            // Login form submission
+            document.getElementById('login-button').addEventListener('click', function() {
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+                const errorElement = document.getElementById('login-error');
+                
+                // Validation
+                if (!email || !password) {
+                    errorElement.textContent = '請填寫所有必填欄位';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                // API call
+                fetch('/user/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.detail || '登入失敗，請檢查您的憑證。');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 檢查回應中是否有 redirect_url
+                    if (data.redirect_url) {
+                        try {
+                            const decoded = decodeURIComponent(data.redirect_url);
+                            // 嘗試創建 URL 對象以驗證有效性
+                            new URL(decoded);
+                            console.log("Redirecting to:", decoded);
+                            window.location.href = decoded;
+                            return;
+                        } catch (e) {
+                            console.error("Invalid redirect URL from API:", e);
+                        }
+                    }
+                    
+                    // 如果沒有有效的 API redirect_url，則嘗試使用查詢參數中的 redirect_url
+                    if (redirectUrl && redirectUrl !== 'None') {
+                        try {
+                            const decoded = decodeURIComponent(redirectUrl);
+                            new URL(decoded);
+                            console.log("Redirecting to (from query):", decoded);
+                            window.location.href = decoded;
+                            return;
+                        } catch (e) {
+                            console.error("Invalid redirect URL from query:", e);
+                        }
+                    }
+                    
+                    // 預設行為：重定向到首頁
+                    console.log("Redirecting to homepage");
+                    window.location.href = '/';
+                })
+                .catch(error => {
+                    errorElement.textContent = error.message;
+                    errorElement.style.display = 'block';
+                });
+            });
+            
+            // Register form submission
+            document.getElementById('register-button').addEventListener('click', function() {
+                const name = document.getElementById('register-name').value;
+                const email = document.getElementById('register-email').value;
+                const password = document.getElementById('register-password').value;
+                const errorElement = document.getElementById('register-error');
+                const successElement = document.getElementById('register-success');
+                
+                // Validation
+                if (!name || !email || !password) {
+                    errorElement.textContent = '請填寫所有必填欄位';
+                    errorElement.style.display = 'block';
+                    successElement.style.display = 'none';
+                    return;
+                }
+                
+                if (password.length < 6) {
+                    errorElement.textContent = '密碼長度不能少於6個字符';
+                    errorElement.style.display = 'block';
+                    successElement.style.display = 'none';
+                    return;
+                }
+                
+                // API call
+                fetch('/user/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password }),
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.detail || '註冊失敗，請稍後再試。');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 檢查回應中是否有 redirect_url
+                    if (data.redirect_url) {
+                        try {
+                            const decoded = decodeURIComponent(data.redirect_url);
+                            // 嘗試創建 URL 對象以驗證有效性
+                            new URL(decoded);
+                            console.log("Redirecting to:", decoded);
+                            window.location.href = decoded;
+                            return;
+                        } catch (e) {
+                            console.error("Invalid redirect URL from API:", e);
+                        }
+                    }
+                    
+                    // 如果沒有有效的 API redirect_url，則嘗試使用查詢參數中的 redirect_url
+                    if (redirectUrl && redirectUrl !== 'None') {
+                        try {
+                            const decoded = decodeURIComponent(redirectUrl);
+                            new URL(decoded);
+                            console.log("Redirecting to (from query):", decoded);
+                            window.location.href = decoded;
+                            return;
+                        } catch (e) {
+                            console.error("Invalid redirect URL from query:", e);
+                        }
+                    }
+                    
+                    // 預設行為：重定向到首頁
+                    console.log("Redirecting to homepage");
+                    window.location.href = '/';
+                })
+                .catch(error => {
+                    errorElement.textContent = error.message;
+                    errorElement.style.display = 'block';
+                    successElement.style.display = 'none';
+                });
+            });
+            
+            // Allow enter key to submit forms
+            document.getElementById('login-password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('login-button').click();
+                }
+            });
+            
+            document.getElementById('register-password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('register-button').click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

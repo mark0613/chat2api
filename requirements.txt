@@ -12,3 +12,7 @@ APScheduler
 ua-generator
 pyjwt
 diskcache
+sqlalchemy
+alembic
+passlib[bcrypt]
+email-validator

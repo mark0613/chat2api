@@ -4,6 +4,7 @@ import random
 import re
 import time
 import uuid
+import urllib.parse
 
 from fastapi import Request, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
@@ -36,7 +37,7 @@ banned_paths = [
     "backend-api/accounts/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/invites",
     "admin",
 ]
-redirect_paths = ["auth/logout"]
+redirect_paths = ["auth/logout", "auth/login"]
 chatgpt_paths = ["c/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"]
 
 
@@ -685,6 +686,36 @@ async def reverse_proxy(request: Request, path: str):
     for redirect_path in redirect_paths:
         if re.match(redirect_path, path):
             redirect_url = str(request.base_url)
+            
+            # 若是 auth/login，收集目前的 URL 作為登入後的重定向
+            if path == "auth/login":
+                # 從 Referer 取得來源頁面
+                referer = request.headers.get("referer", "")
+                current_url = ""
+                
+                # 如果是對話頁面，直接使用完整路徑
+                if request.url.path.startswith("/c/"):
+                    current_url = str(request.base_url)[:-1] + request.url.path  # 移除尾部斜線
+                # 如果有 referer 且不是登入頁面
+                elif referer and not referer.endswith("/login") and not referer.endswith("/register"):
+                    current_url = referer
+                
+                # 安全地編碼 URL
+                if current_url:
+                    encoded_url = urllib.parse.quote(current_url)
+                    return RedirectResponse(url=f"{redirect_url}login?redirect_url={encoded_url}", status_code=302)
+                
+                # 如果沒有有效的來源，則直接重定向到登入頁面
+                return RedirectResponse(url=f"{redirect_url}login", status_code=302)
+                
+            # 若是 auth/logout，需要清除 token 和 jwt cookie
+            if path == "auth/logout":
+                response = RedirectResponse(url=f"{redirect_url}login", status_code=302)
+                response.delete_cookie(key="token")
+                response.delete_cookie(key="jwt")
+                return response
+            
+            # 其他情況，純粗重定向到登入頁面
             response = RedirectResponse(url=f"{redirect_url}login", status_code=302)
             return response
 
