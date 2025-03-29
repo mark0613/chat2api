@@ -33,6 +33,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 添加身份驗證中間件
+app.add_middleware(AuthMiddleware)
+
 templates = Jinja2Templates(directory="templates")
 security_scheme = HTTPBearer()
 
@@ -45,18 +48,16 @@ async def startup_event():
 import api.chat2api
 
 if enable_gateway:
+    from apps.user import routes, views
+    app.include_router(routes.router)
+    app.include_router(views.router)
+
     import gateway.share
     import gateway.chatgpt
     import gateway.gpts
     import gateway.admin
     import gateway.v1
     import gateway.backend
-    from app import app
-    from apps.user import routes, views
-
-    app.add_middleware(AuthMiddleware)
-    app.include_router(routes.router)
-    app.include_router(views.router)
 else:
     @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE"])
     async def reverse_proxy():
