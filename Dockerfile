@@ -6,6 +6,8 @@ COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN python manage.py migration upgrade
+
 EXPOSE 5005
 
 CMD ["python", "app.py"]
