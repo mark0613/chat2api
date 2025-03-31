@@ -14,8 +14,6 @@ SEED_MAP_FILE = os.path.join(DATA_FOLDER, "seed_map.json")
 CONVERSATION_MAP_FILE = os.path.join(DATA_FOLDER, "conversation_map.json")
 
 count = 0
-token_list = []
-error_token_list = []
 refresh_map = {}
 wss_map = {}
 fp_map = {}
@@ -83,25 +81,3 @@ if os.path.exists(CONVERSATION_MAP_FILE):
             conversation_map = {}
 else:
     conversation_map = {}
-
-if os.path.exists(TOKENS_FILE):
-    with open(TOKENS_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip() and not line.startswith("#"):
-                token_list.append(line.strip())
-else:
-    with open(TOKENS_FILE, "w", encoding="utf-8") as f:
-        pass
-
-if os.path.exists(ERROR_TOKENS_FILE):
-    with open(ERROR_TOKENS_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip() and not line.startswith("#"):
-                error_token_list.append(line.strip())
-else:
-    with open(ERROR_TOKENS_FILE, "w", encoding="utf-8") as f:
-        pass
-
-if token_list:
-    logger.info(f"Token list count: {len(token_list)}, Error token list count: {len(error_token_list)}")
-    logger.info("-" * 60)

@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
 from middleware.auth import AuthMiddleware
+from middleware.token import TokenCheckMiddleware
 from utils.configs import enable_gateway, api_prefix
 from utils.database import init_db
 
@@ -33,9 +34,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 添加身份驗證中間件
-app.add_middleware(AuthMiddleware)
-
 templates = Jinja2Templates(directory="templates")
 security_scheme = HTTPBearer()
 
@@ -48,10 +46,20 @@ async def startup_event():
 import api.chat2api
 
 if enable_gateway:
-    from apps.user import routes, views
-    app.include_router(routes.router)
-    app.include_router(views.router)
+    from apps.user import routes as user_routes
+    from apps.user import views as user_views
+    from apps.token import routes as token_routes
+    from apps.token import views as token_views
 
+    # 中間件添加的順序與執行順序相反 - 後添加的先執行
+    app.add_middleware(TokenCheckMiddleware)
+    app.add_middleware(AuthMiddleware)
+    
+    app.include_router(user_routes.router)
+    app.include_router(user_views.router)
+    app.include_router(token_routes.router)
+    app.include_router(token_views.router)
+    
     import gateway.share
     import gateway.chatgpt
     import gateway.gpts

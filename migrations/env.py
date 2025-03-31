@@ -13,6 +13,7 @@ from utils.database import Base, get_database_url
 
 # Import model classes to register them with the Base
 import apps.user.models
+import apps.token.models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

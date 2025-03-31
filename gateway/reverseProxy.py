@@ -8,13 +8,13 @@ from fastapi import Request, HTTPException
 from fastapi.responses import StreamingResponse, Response
 from starlette.background import BackgroundTask
 
-import utils.globals as globals
+from apps.token.operations import mark_token_as_error, get_available_token, update_token_timestamp
 from chatgpt.authorization import verify_token, get_req_token
 from chatgpt.fp import get_fp
 from utils.Client import Client
+from utils.database import get_db, get_db_context
 from utils.Logger import logger
 from utils.configs import chatgpt_base_url_list, sentinel_proxy_url_list, force_no_history, file_host, voice_host
-
 
 def generate_current_time():
     current_time = datetime.now(timezone.utc)
@@ -93,79 +93,41 @@ headers_accept_list = [
 
 async def get_real_req_token(token):
     req_token = get_req_token(token)
+
+    # 如果是 refresh_token 或 access_token，直接返回
     if len(req_token) == 45 or req_token.startswith("eyJhbGciOi"):
+        with get_db_context() as db:
+            update_token_timestamp(db, req_token)
         return req_token
     else:
-        req_token = get_req_token("", token)
+        try:
+            with get_db_context() as db:
+                available_token = get_available_token(db, threshold=3600, prefer_access_token=True)
+                if available_token:
+                    update_token_timestamp(db, available_token)
+                    return available_token
+        except Exception as e:
+            logger.error(f"Error getting available token: {str(e)}")
+        
+        # 如果都失敗，返回原始 token
         return req_token
 
 
 def save_conversation(token, conversation_id, title=None):
-    if conversation_id not in globals.conversation_map:
-        conversation_detail = {
-            "id": conversation_id,
-            "title": title,
-            "create_time": generate_current_time(),
-            "update_time": generate_current_time()
-        }
-        globals.conversation_map[conversation_id] = conversation_detail
-    else:
-        globals.conversation_map[conversation_id]["update_time"] = generate_current_time()
-        if title:
-            globals.conversation_map[conversation_id]["title"] = title
-    if conversation_id not in globals.seed_map[token]["conversations"]:
-        globals.seed_map[token]["conversations"].insert(0, conversation_id)
-    else:
-        globals.seed_map[token]["conversations"].remove(conversation_id)
-        globals.seed_map[token]["conversations"].insert(0, conversation_id)
-    with open(globals.CONVERSATION_MAP_FILE, "w", encoding="utf-8") as f:
-        json.dump(globals.conversation_map, f, indent=4)
-    with open(globals.SEED_MAP_FILE, "w", encoding="utf-8") as f:
-        json.dump(globals.seed_map, f, indent=4)
+    # TODO: 我們將不再使用檔案存儲對話記錄，未來支援 db 儲存再進行修改
     if title:
         logger.info(f"Conversation ID: {conversation_id}, Title: {title}")
 
 
 async def content_generator(r, token, history=True):
-    conversation_id = None
-    title = None
+    # TODO: 移除對話保存邏輯，只保留内容生成，未來支援 db 儲存再進行修改
     async for chunk in r.aiter_content():
-        try:
-            if history and (len(token) != 45 and not token.startswith("eyJhbGciOi")) and (not conversation_id or not title):
-                chat_chunk = chunk.decode('utf-8')
-                if not conversation_id or not title and chat_chunk.startswith("event: delta\n\ndata: {"):
-                    chunk_data = chat_chunk[19:]
-                    conversation_id = json.loads(chunk_data).get("v").get("conversation_id")
-                    if conversation_id:
-                        save_conversation(token, conversation_id)
-                        title = globals.conversation_map[conversation_id].get("title")
-                if chat_chunk.startswith("data: {"):
-                    if "\n\nevent: delta" in chat_chunk:
-                        index = chat_chunk.find("\n\nevent: delta")
-                        chunk_data = chat_chunk[6:index]
-                    elif "\n\ndata: {" in chat_chunk:
-                        index = chat_chunk.find("\n\ndata: {")
-                        chunk_data = chat_chunk[6:index]
-                    else:
-                        chunk_data = chat_chunk[6:]
-                    chunk_data = chunk_data.strip()
-                    if conversation_id is None:
-                        conversation_id = json.loads(chunk_data).get("conversation_id")
-                        if conversation_id:
-                            save_conversation(token, conversation_id)
-                            title = globals.conversation_map[conversation_id].get("title")
-                    if title is None:
-                        title = json.loads(chunk_data).get("title")
-                        if title:
-                            save_conversation(token, conversation_id, title)
-        except Exception as e:
-            # logger.error(e)
-            # logger.error(chunk.decode('utf-8'))
-            pass
         yield chunk
 
 
 async def chatgpt_reverse_proxy(request: Request, path: str):
+    # 檢查是否為 backend-api 請求
+    is_backend_api = "backend-api" in path
     try:
         origin_host = request.url.netloc
         if request.url.is_secure:
@@ -261,6 +223,11 @@ async def chatgpt_reverse_proxy(request: Request, path: str):
             background = BackgroundTask(client.close)
             r = await client.request(request.method, f"{base_url}/{path}", params=params, headers=headers,
                                      cookies=request_cookies, data=data, stream=True, allow_redirects=False)
+            
+            # 針對 backend-api 請求的 401 錯誤特別處理
+            if is_backend_api and r.status_code == 401:
+                db = next(get_db())
+                mark_token_as_error(db, req_token)
             if r.status_code == 307 or r.status_code == 302 or r.status_code == 301:
                 return Response(status_code=307,
                                 headers={"Location": r.headers.get("Location")

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Token Error</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-red-100 via-red-200 to-red-300 flex justify-center items-center min-h-screen">
+    <div class="bg-white p-10 rounded-lg shadow-2xl w-128 text-center">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-6">不是你的錯！</h1>
+        <div class="text-7xl mb-6">😢</div>
+        <p class="text-xl text-gray-700 mb-8">Token 有問題，請通知管理員檢查 Token</p>
+
+        {% if user and user.role == "admin" %}
+        <div class="mt-6">
+            <a href="/tokens" class="inline-block bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition duration-300">管理 Token</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

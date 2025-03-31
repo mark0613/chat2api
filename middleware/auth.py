@@ -1,12 +1,13 @@
 import urllib.parse
 from typing import Optional, List, Dict, Any
-
 from fastapi import Request, Response
 from fastapi.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from sqlalchemy.orm import Session
+from contextlib import contextmanager
 
 from apps.user.utils import decode_token
-
+from utils.database import get_db
 
 class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -14,7 +15,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # 不需要驗證的路徑
         self.excluded_paths = [
             "/login", "/register", "/user/login", "/user/register", "/logout",
-            "/static", "/favicon.ico", "/api", "/docs", "/redoc", "/token_error"
+            "/static", "/favicon.ico", "/api", "/docs", "/redoc", "/token_error", "/403"
         ]
         # 需要檢查 token 的路徑
         self.token_required_paths = [
@@ -23,11 +24,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         jwt = request.cookies.get("jwt")
-        token = request.cookies.get("token")
         path = request.url.path
         
         # 1. 已登入用戶訪問登入/註冊頁面的情況
-        if jwt and token and self._is_valid_jwt(jwt):
+        if jwt and self._is_valid_jwt(jwt):
             # 如果用戶已登入且嘗試訪問登入或註冊頁面，重定向到首頁
             if path == "/login" or path == "/register":
                 return RedirectResponse(url="/", status_code=302)
@@ -39,9 +39,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 skip_auth = True
                 break
         
-        # 3. 檢查 JWT 和 token
+        # 3. 檢查 JWT
         if not skip_auth:
-            if not jwt or not token or not self._is_valid_jwt(jwt):
+            if not jwt or not self._is_valid_jwt(jwt):
                 for token_path in self.token_required_paths:
                     if path.startswith(token_path):
                         if not jwt:
@@ -54,7 +54,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                         elif jwt and not self._is_valid_jwt(jwt):
                             response = RedirectResponse(url="/login", status_code=302)
                             response.delete_cookie("jwt")
-                            response.delete_cookie("token")
                             return response
                         break
         

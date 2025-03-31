@@ -3,78 +3,386 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>Tokens 管理</title>
+    <title>Token 管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自定義 popup 樣式 */
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            width: 400px;
+        }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const apiPrefix = "{{ api_prefix }}";
             const uploadForm = document.getElementById('uploadForm');
             const clearForm = document.getElementById('clearForm');
             const errorButton = document.getElementById('errorButton');
+            const tokensList = document.getElementById('tokensList');
+            const errorTokensList = document.getElementById('errorTokensList');
+            
+            // 確認 popup 元素和元件
+            const confirmPopup = document.getElementById('confirmPopup');
+            const confirmMessage = document.getElementById('confirmMessage');
+            const confirmButton = document.getElementById('confirmYes');
+            const cancelButton = document.getElementById('confirmNo');
+            
+            // 當前操作相關變數
+            let currentAction = null;
+            let currentTokenId = null;
 
             if (apiPrefix === "None") {
-                uploadForm.action = "/tokens/upload";
-                clearForm.action = "/tokens/clear";
-                errorButton.dataset.api = "/tokens/error";
+                uploadForm.action = "/token/add";
+                clearForm.action = "/token/clear";
+                errorTokensUrl = "/token/list";
             } else {
-                uploadForm.action = `/${apiPrefix}/tokens/upload`;
-                clearForm.action = `/${apiPrefix}/tokens/clear`;
-                errorButton.dataset.api = `/${apiPrefix}/tokens/error`;
+                uploadForm.action = `/${apiPrefix}/token/add`;
+                clearForm.action = `/${apiPrefix}/token/clear`;
+                errorTokensUrl = `/${apiPrefix}/token/list`;
             }
 
-            errorButton.addEventListener('click', async () => {
-                const response = await fetch(errorButton.dataset.api, {
-                    method: 'POST',
-                });
-                const result = await response.json();
-                const errorTokens = result.error_tokens;
-
-                const errorModal = document.getElementById('errorModal');
-                const errorModalContent = document.getElementById('errorModalContent');
-
-                errorModalContent.innerHTML = errorTokens.map(token => `<p>${token}</p>`).join('');
-                errorModal.classList.remove('hidden');
+            // 自定義顯示 popup 的函數
+            window.showPopup = function(message, type = 'info') {
+                const popup = document.getElementById('customPopup');
+                const popupMessage = document.getElementById('popupMessage');
+                const popupIcon = document.getElementById('popupIcon');
+                
+                popupMessage.textContent = message;
+                
+                // 根據類型設置圖標
+                if (type === 'success') {
+                    popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                } else if (type === 'error') {
+                    popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
+                } else {
+                    popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                }
+                
+                popup.style.display = 'flex';
+                
+                // 3秒後自動關閉
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                }, 3000);
+            }
+            
+            // 顯示確認 popup 的函數
+            window.showConfirm = function(message, action, tokenId = null) {
+                confirmMessage.textContent = message;
+                currentAction = action;
+                currentTokenId = tokenId;
+                confirmPopup.style.display = 'flex';
+            }
+            
+            // 確認按鈕事件
+            confirmButton.addEventListener('click', async () => {
+                confirmPopup.style.display = 'none';
+                
+                if (currentAction === 'mark-error') {
+                    await executeMarkAsError(currentTokenId);
+                } else if (currentAction === 'delete') {
+                    await executeDeleteToken(currentTokenId);
+                } else if (currentAction === 'clear') {
+                    await executeClearTokens();
+                }
+                
+                // 重置當前操作
+                currentAction = null;
+                currentTokenId = null;
+            });
+            
+            // 取消按鈕事件
+            cancelButton.addEventListener('click', () => {
+                confirmPopup.style.display = 'none';
+                currentAction = null;
+                currentTokenId = null;
             });
 
-            document.getElementById('errorModalClose').addEventListener('click', () => {
-                document.getElementById('errorModal').classList.add('hidden');
+            // 載入 tokens 和 error tokens
+            const loadTokens = async () => {
+                try {
+                    const response = await fetch(errorTokensUrl);
+                    const data = await response.json();
+                    
+                    // 更新正常 tokens 列表
+                    tokensList.innerHTML = '';
+                    data.tokens.forEach(token => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="border p-2 truncate max-w-[200px]">${token.token}</td>
+                            <td class="border p-2">${token.description}</td>
+                            <td class="border p-2">
+                                <button onclick="showConfirm('確定要將此 Token 標記為錯誤嗎？', 'mark-error', ${token.id})" class="bg-yellow-500 text-white py-1 px-2 rounded hover:bg-yellow-600 mr-2">標記為錯誤</button>
+                                <button onclick="showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！', 'delete', ${token.id})" class="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600">刪除</button>
+                            </td>
+                        `;
+                        tokensList.appendChild(tr);
+                    });
+                    
+                    // 更新錯誤 tokens 列表
+                    errorTokensList.innerHTML = '';
+                    data.error_tokens.forEach(token => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="border p-2 truncate max-w-[200px]">${token.token}</td>
+                            <td class="border p-2">${token.description}</td>
+                            <td class="border p-2">
+                                <button onclick="showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！', 'delete', ${token.id})" class="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600">刪除</button>
+                            </td>
+                        `;
+                        errorTokensList.appendChild(tr);
+                    });
+                    
+                    // 更新計數
+                    document.getElementById('tokensCount').textContent = data.tokens.length;
+                    document.getElementById('errorTokensCount').textContent = data.error_tokens.length;
+                } catch (error) {
+                    console.error('Error loading tokens:', error);
+                    showPopup('載入 tokens 失敗，請稍後再試', 'error');
+                }
+            };
+
+            // 初始載入
+            loadTokens();
+
+            // 添加 Token
+            uploadForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const tokenInput = document.getElementById('tokenInput');
+                const descriptionInput = document.getElementById('descriptionInput');
+                
+                if (!tokenInput.value || !descriptionInput.value) {
+                    showPopup('Token 和描述不能為空', 'error');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('token', tokenInput.value);
+                formData.append('description', descriptionInput.value);
+                
+                try {
+                    const response = await fetch(uploadForm.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        tokenInput.value = '';
+                        descriptionInput.value = '';
+                        loadTokens();
+                        showPopup('Token 添加成功', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error adding token:', error);
+                    showPopup('添加 token 時發生錯誤', 'error');
+                }
             });
 
-            document.getElementById('errorModalCopy').addEventListener('click', () => {
-                const errorModalContent = document.getElementById('errorModalContent');
-                const textToCopy = errorModalContent.innerText.replace(/\n\n/g, '\n');
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    alert('错误 Tokens 已复制到剪贴板');
-                }).catch(err => {
-                    alert('复制失败，请手动复制');
-                });
+            // 清空所有 Tokens
+            clearForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                showConfirm('確定要清空所有 Tokens 嗎？這個操作不可撤銷！', 'clear');
+            });
+            
+            // 執行標記為錯誤的操作
+            async function executeMarkAsError(tokenId) {
+                const url = apiPrefix === "None" ? 
+                    `/token/mark-error/${tokenId}` : 
+                    `/${apiPrefix}/token/mark-error/${tokenId}`;
+                    
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        loadTokens();
+                        showPopup('Token 已標記為錯誤', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error marking token as error:', error);
+                    showPopup('標記 token 為錯誤時發生錯誤', 'error');
+                }
+            }
+            
+            // 執行刪除操作
+            async function executeDeleteToken(tokenId) {
+                const url = apiPrefix === "None" ? 
+                    `/token/delete/${tokenId}` : 
+                    `/${apiPrefix}/token/delete/${tokenId}`;
+                    
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        loadTokens();
+                        showPopup('Token 已刪除', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error deleting token:', error);
+                    showPopup('刪除 token 時發生錯誤', 'error');
+                }
+            }
+            
+            // 執行清空操作
+            async function executeClearTokens() {
+                try {
+                    const response = await fetch(clearForm.action, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        loadTokens();
+                        showPopup('所有 Tokens 已清空', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error clearing tokens:', error);
+                    showPopup('清空 tokens 時發生錯誤', 'error');
+                }
+            }
+            
+            // 為全局作用域定義函數，以便從HTML中調用
+            window.markAsError = executeMarkAsError;
+            window.deleteToken = executeDeleteToken;
+
+            // 關閉 popup 的點擊事件
+            document.getElementById('closePopup').addEventListener('click', () => {
+                document.getElementById('customPopup').style.display = 'none';
             });
         });
     </script>
 </head>
-<body class="bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 flex justify-center items-center min-h-screen">
-    <div class="bg-white p-10 rounded-lg shadow-2xl w-128 text-center">
-        <h1 class="text-4xl font-extrabold text-gray-900 mb-6">Tokens 管理</h1>
-        <p class="text-gray-600 mb-4">当前可用 Tokens 数量：<span class="text-blue-600">{{ tokens_count }}</span></p>
-        <form class="mb-2" id="uploadForm" method="post">
-            <textarea class="w-full p-4 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" name="text" placeholder="一行一个Token，可以是 AccessToken 或 RefreshToken" rows="10"></textarea>
-            <p class="text-gray-600 mb-2">注：使用docker时如果挂载了data文件夹则重启后不需要再次上传</p>
-            <button class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition duration-300 mb-2" type="submit">上传</button>
-        </form>
-        <button id="errorButton" class="w-full bg-yellow-600 text-white py-3 rounded-md hover:bg-yellow-700 transition duration-200 mt-2">查看错误Tokens</button>
-        <p class="text-gray-600 mt-2">点击清空，将会清空上传和错误的 Tokens</p>
-        <form id="clearForm" method="post">
-            <button class="w-full bg-red-600 text-white py-3 rounded-md hover:bg-red-700 transition duration-300" type="submit">清空Tokens</button>
-        </form>
+<body class="bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 min-h-screen">
+    <div class="container mx-auto p-6">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-6 text-center">Token 管理</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- 添加 Token -->
+            <div class="bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold mb-4">添加 Token</h2>
+                <form id="uploadForm" class="mb-4">
+                    <div class="mb-4">
+                        <label for="tokenInput" class="block text-gray-700 mb-2">Token</label>
+                        <input type="text" id="tokenInput" name="token" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="輸入你的 Token">
+                    </div>
+                    <div class="mb-4">
+                        <label for="descriptionInput" class="block text-gray-700 mb-2">描述</label>
+                        <input type="text" id="descriptionInput" name="description" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="輸入描述（例如：用途、來源等）">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">添加</button>
+                </form>
+            </div>
+            
+            <!-- 統計和清空 -->
+            <div class="bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold mb-4">Tokens 統計</h2>
+                <div class="mb-4">
+                    <p class="text-gray-700">可用 Tokens 數量：<span id="tokensCount" class="text-blue-600 font-bold">{{ tokens_count }}</span></p>
+                    <p class="text-gray-700">錯誤 Tokens 數量：<span id="errorTokensCount" class="text-red-600 font-bold">{{ error_tokens_count }}</span></p>
+                </div>
+                <form id="clearForm" class="mb-4">
+                    <button type="submit" class="w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">清空所有 Tokens</button>
+                </form>
+                <p class="text-sm text-gray-500 text-center">清空操作會刪除所有 Tokens，包括錯誤的 Tokens。此操作不可撤銷！</p>
+            </div>
+        </div>
+        
+        <!-- Tokens 列表 -->
+        <div class="bg-white p-6 rounded-lg shadow-xl mb-8">
+            <h2 class="text-2xl font-bold mb-4">可用 Tokens 列表</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border p-2 text-left">Token</th>
+                            <th class="border p-2 text-left">描述</th>
+                            <th class="border p-2 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tokensList">
+                        <tr>
+                            <td colspan="3" class="border p-4 text-center text-gray-500">載入中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 錯誤 Tokens 列表 -->
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold mb-4">錯誤 Tokens 列表</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border p-2 text-left">Token</th>
+                            <th class="border p-2 text-left">描述</th>
+                            <th class="border p-2 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="errorTokensList">
+                        <tr>
+                            <td colspan="3" class="border p-4 text-center text-gray-500">載入中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 訊息 Popup -->
+    <div id="customPopup" class="popup">
+        <div class="popup-content">
+            <div class="flex items-center mb-4">
+                <div id="popupIcon" class="mr-3"></div>
+                <p id="popupMessage" class="text-lg"></p>
+            </div>
+            <div class="flex justify-end">
+                <button id="closePopup" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-4 rounded">關閉</button>
+            </div>
+        </div>
     </div>
     
-    <div id="errorModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center hidden">
-        <div class="bg-white p-6 rounded-lg shadow-lg w-150">
-            <h2 class="text-2xl font-bold mb-4">错误 Tokens</h2>
-            <div id="errorModalContent" class="list-disc list-inside text-left mb-4"></div>
-            <div class="flex justify-end space-x-4">
-                <button id="errorModalCopy" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">复制</button>
-                <button id="errorModalClose" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300">关闭</button>
+    <!-- 確認 Popup -->
+    <div id="confirmPopup" class="popup">
+        <div class="popup-content">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-gray-900 mb-2">確認操作</h3>
+                <p id="confirmMessage" class="text-gray-700"></p>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button id="confirmNo" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-4 rounded">取消</button>
+                <button id="confirmYes" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-4 rounded">確認</button>
             </div>
         </div>
     </div>

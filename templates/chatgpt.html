@@ -86,6 +86,90 @@
             }();
         </script>
 {{ clear_localstorage_script | safe }}
+    <script>
+        // 監聽對 backend-api 的請求，捕獲 401 錯誤
+        const originalFetch = window.fetch;
+        window.fetch = async function(resource, options) {
+            try {
+                // 記錄請求資源以方便除錯
+                const requestUrl = typeof resource === 'string' ? resource : resource.url;
+                const isBackendApi = requestUrl.includes('backend-api');
+                
+                if (isBackendApi) {
+                    console.log(`Intercepted request to: ${requestUrl}`);
+                }
+                
+                // 執行原始的 fetch 請求
+                const response = await originalFetch(resource, options);
+                
+                // 檢查是否為 backend-api 請求且返回狀態碼為 401
+                if (isBackendApi && response.status === 401) {
+                    console.error(`Backend API request failed with 401 status: ${requestUrl}`);
+                    
+                    try {
+                        // 嘗試讀取響應內容以記錄錯誤訊息
+                        const clonedResponse = response.clone();
+                        const responseText = await clonedResponse.text();
+                        console.error(`Response content: ${responseText}`);
+                    } catch (readError) {
+                        console.error(`Could not read response: ${readError}`);
+                    }
+                    
+                    // 將錯誤記錄到控制台
+                    console.error('Redirecting to token_error page due to 401 status');
+                    
+                    // 導向到 token_error 頁面
+                    setTimeout(() => {
+                        // 使用延遲以確保日誌記錄完成
+                        window.location.href = '/token_error';
+                    }, 100);
+                    
+                    // 返回空響應以避免後續處理
+                    return new Response(new Blob(['"Unauthorized"']), {
+                        status: 401,
+                        statusText: 'Unauthorized',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                
+                return response;
+            } catch (error) {
+                console.error(`Fetch error: ${error.message}`);
+                // 如果是網路錯誤且請求為 backend-api，可能也是 token 問題
+                if (typeof resource === 'string' && resource.includes('backend-api')) {
+                    setTimeout(() => {
+                        window.location.href = '/token_error';
+                    }, 100);
+                    
+                    // 返回一個虛擬的錯誤響應
+                    return new Response(new Blob(['"Network Error"']), {
+                        status: 500,
+                        statusText: 'Network Error',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                // 如果捕獲到網路錯誤，則正常拋出
+                throw error;
+            }
+        };
+        
+        // 添加頁面定期檢測 token 有效性的功能
+        async function checkTokenValidity() {
+            try {
+                // 嘗試請求一個需要權限的 API 以檢查 token 有效性
+                const response = await fetch('/backend-api/models');
+                if (response.status === 401) {
+                    console.error('Token appears to be invalid, redirecting to token_error');
+                    window.location.href = '/token_error';
+                }
+            } catch (error) {
+                console.error(`Token check failed: ${error.message}`);
+            }
+        }
+        
+        // 在頁面加載後執行一次檢查
+        setTimeout(checkTokenValidity, 1000);
+    </script>
     </head>
     <body class="">
         <script>

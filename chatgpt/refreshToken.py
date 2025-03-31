@@ -1,5 +1,4 @@
 import hashlib
-import json
 import random
 import time
 
@@ -8,24 +7,78 @@ from fastapi import HTTPException
 from utils.Client import Client
 from utils.Logger import logger
 from utils.configs import proxy_url_list
-import utils.globals as globals
+from utils.database import get_db_context
+from apps.token.operations import update_token_timestamp, mark_token_as_error
+from apps.token.models import Token
 
 
 async def rt2ac(refresh_token, force_refresh=False):
-    if not force_refresh and (refresh_token in globals.refresh_map and int(time.time()) - globals.refresh_map.get(refresh_token, {}).get("timestamp", 0) < 5 * 24 * 60 * 60):
-        access_token = globals.refresh_map[refresh_token]["token"]
-        # logger.info(f"refresh_token -> access_token from cache")
+    # 檢查資料庫中的 token 記錄
+    with get_db_context() as db:
+        token_record = db.query(Token).filter(Token.token == refresh_token, Token.is_refresh_token == True).first()
+        
+        # 如果沒有找到對應的 token 記錄，或者被標記為錯誤，拒絕處理
+        if not token_record:
+            logger.error(f"refresh_token not found in database")
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        
+        if token_record.is_error:
+            logger.error(f"refresh_token is marked as error")
+            raise HTTPException(status_code=401, detail="Refresh token is marked as error")
+        
+        # 檢查 token 是否在有效期內（5天），如果在有效期內且非強制刷新，直接返回現有 access_token
+        current_time = int(time.time())
+        refresh_threshold = 5 * 24 * 60 * 60  # 5天
+        
+        # 如果有關聯的 access_token 且未過期，直接返回
+        access_token_record = db.query(Token).filter(
+            Token.description == f"Generated from refresh token ID: {token_record.id}",
+            Token.is_refresh_token == False,
+            Token.is_error == False
+        ).first()
+        
+        if not force_refresh and access_token_record and access_token_record.timestamp > 0 and (current_time - access_token_record.timestamp < refresh_threshold):
+            logger.info(f"refresh_token -> access_token from database cache")
+            return access_token_record.token
+    
+    # 需要刷新 token
+    try:
+        access_token = await chat_refresh(refresh_token)
+
+        with get_db_context() as db:
+            # 更新 refresh_token 的時間戳
+            token_record = db.query(Token).filter(Token.token == refresh_token).first()
+            if token_record:
+                token_record.timestamp = int(time.time())
+            
+            # 尋找對應的 access_token 記錄
+            access_token_record = db.query(Token).filter(
+                Token.description == f"Generated from refresh token ID: {token_record.id}",
+                Token.is_refresh_token == False
+            ).first()
+            
+            # 如果已有記錄，更新它
+            if access_token_record:
+                access_token_record.token = access_token
+                access_token_record.timestamp = int(time.time())
+                access_token_record.is_error = False
+            else:
+                # 創建新記錄
+                new_token = Token(
+                    token=access_token,
+                    is_refresh_token=False,
+                    timestamp=int(time.time()),
+                    created_by=token_record.created_by if token_record else None,
+                    description=f"Generated from refresh token ID: {token_record.id}"
+                )
+                db.add(new_token)
+            
+            db.commit()
+        
+        logger.info(f"refresh_token -> access_token with openai: {access_token[:10]}...")
         return access_token
-    else:
-        try:
-            access_token = await chat_refresh(refresh_token)
-            globals.refresh_map[refresh_token] = {"token": access_token, "timestamp": int(time.time())}
-            with open(globals.REFRESH_MAP_FILE, "w") as f:
-                json.dump(globals.refresh_map, f, indent=4)
-            logger.info(f"refresh_token -> access_token with openai: {access_token}")
-            return access_token
-        except HTTPException as e:
-            raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 async def chat_refresh(refresh_token):
@@ -45,10 +98,9 @@ async def chat_refresh(refresh_token):
             return access_token
         else:
             if "invalid_grant" in r.text or "access_denied" in r.text:
-                if refresh_token not in globals.error_token_list:
-                    globals.error_token_list.append(refresh_token)
-                    with open(globals.ERROR_TOKENS_FILE, "a", encoding="utf-8") as f:
-                        f.write(refresh_token + "\n")
+                # 將 refresh_token 標記為錯誤
+                with get_db_context() as db:
+                    mark_token_as_error(db, refresh_token)
                 raise Exception(r.text)
             else:
                 raise Exception(r.text[:300])
