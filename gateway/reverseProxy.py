@@ -8,7 +8,7 @@ from fastapi import Request, HTTPException
 from fastapi.responses import StreamingResponse, Response
 from starlette.background import BackgroundTask
 
-from apps.token.operations import mark_token_as_error, get_available_token, update_token_timestamp
+from apps.token.operations import mark_token_as_error, get_available_token
 from chatgpt.authorization import verify_token, get_req_token
 from chatgpt.fp import get_fp
 from utils.Client import Client
@@ -96,15 +96,12 @@ async def get_real_req_token(token):
 
     # 如果是 refresh_token 或 access_token，直接返回
     if len(req_token) == 45 or req_token.startswith("eyJhbGciOi"):
-        with get_db_context() as db:
-            update_token_timestamp(db, req_token)
         return req_token
     else:
         try:
             with get_db_context() as db:
                 available_token = get_available_token(db, threshold=3600, prefer_access_token=True)
                 if available_token:
-                    update_token_timestamp(db, available_token)
                     return available_token
         except Exception as e:
             logger.error(f"Error getting available token: {str(e)}")

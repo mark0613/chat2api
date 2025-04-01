@@ -14,7 +14,6 @@ from apps.token.operations import (
     get_all_error_tokens,
     mark_token_as_error,
     get_available_token,
-    update_token_timestamp,
     get_available_token,
 )
 
@@ -37,8 +36,6 @@ def get_req_token(req_token, seed=None):
         # API
         if req_token in configs.authorization_list:
             if selected_token:
-                with next(get_db()) as db:
-                    update_token_timestamp(db, req_token)
                 return selected_token
             else:
                 return ""
@@ -59,9 +56,6 @@ async def verify_token(req_token):
         else:
             return None
     else:
-        with next(get_db()) as db:
-            update_token_timestamp(db, req_token)
-        
         if req_token.startswith("eyJhbGciOi") or req_token.startswith("fk-"):
             access_token = req_token
             return access_token
@@ -115,6 +109,4 @@ async def refresh_all_tokens(force_refresh=False):
 def get_token():
     with next(get_db()) as db:
         selected_token = get_available_token(db, threshold=60*60, prefer_access_token=True)
-        if selected_token:
-            update_token_timestamp(db, selected_token)
         return selected_token

@@ -147,13 +147,3 @@ def get_available_token(db: Session, threshold: int = 60*60, prefer_access_token
             return available_access_tokens[0].token
     
     return None
-
-
-def update_token_timestamp(db: Session, token_value: str):
-    """更新 token 的使用時間戳"""
-    token = db.query(Token).filter(Token.token == token_value).first()
-    if token:
-        token.timestamp = int(time.time())
-        db.commit()
-        return True
-    return False

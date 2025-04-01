@@ -16,7 +16,7 @@ from utils.Logger import logger
 from utils.configs import api_prefix, scheduled_refresh
 from utils.retry import async_retry
 from utils.database import get_db, get_db_context
-from apps.token.operations import mark_token_as_error, get_all_tokens, get_all_error_tokens, add_token, clear_all_tokens, get_available_token, update_token_timestamp
+from apps.token.operations import mark_token_as_error, get_all_tokens, get_all_error_tokens, add_token, clear_all_tokens, get_available_token
 from apps.user.utils import decode_token
 from apps.user.operations import UserOperation
 
@@ -36,8 +36,6 @@ def get_api_token(db: Session):
     token = get_available_token(db, threshold=60*60, prefer_access_token=True)
     if not token:
         raise HTTPException(status_code=503, detail="No available tokens")
-
-    update_token_timestamp(db, token)
     return token
 
 

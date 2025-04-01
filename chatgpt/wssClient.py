@@ -3,7 +3,6 @@ import time
 from utils.Logger import logger
 from utils.database import get_db_context
 from apps.token.models import Token
-from apps.token.operations import update_token_timestamp
 
 
 def update_wss_info(token_value, wss_mode, wss_url=None):

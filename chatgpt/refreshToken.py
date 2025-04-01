@@ -8,7 +8,7 @@ from utils.Client import Client
 from utils.Logger import logger
 from utils.configs import proxy_url_list
 from utils.database import get_db_context
-from apps.token.operations import update_token_timestamp, mark_token_as_error
+from apps.token.operations import mark_token_as_error
 from apps.token.models import Token
 
 
