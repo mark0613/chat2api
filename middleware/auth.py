@@ -15,7 +15,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # 不需要驗證的路徑
         self.excluded_paths = [
             "/login", "/register", "/user/login", "/user/register", "/logout",
-            "/static", "/favicon.ico", "/api", "/docs", "/redoc", "/token_error", "/403"
+            "/static", "/favicon.ico", "/api", "/docs", "/redoc", "/token_error", "/403",
+            "/v1"
         ]
         # 需要檢查 token 的路徑
         self.token_required_paths = [

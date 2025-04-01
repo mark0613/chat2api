@@ -1,32 +1,54 @@
 import asyncio
 import time
+import json
 
 from fastapi import HTTPException
 
 import utils.configs as configs
+import utils.globals as globals
 from chatgpt.refreshToken import rt2ac
 from utils.Logger import logger
 from utils.database import get_db
-from apps.token.operations import get_all_tokens, get_all_error_tokens, mark_token_as_error, get_available_token, update_token_timestamp
+from apps.token.operations import (
+    get_all_tokens,
+    get_all_error_tokens,
+    mark_token_as_error,
+    get_available_token,
+    update_token_timestamp,
+    get_available_token,
+)
 
 
 def get_req_token(req_token, seed=None):
-    """
-    獲取請求 token
-    - 如果提供了 req_token，則優先使用
-    - 如果沒有提供 req_token，則從數據庫獲取一個可用的 token
-    """
-    if req_token:
-        return req_token
-    
-    # 從數據庫獲取可用的 token，優先選擇 access_token
-    with next(get_db()) as db:
-        selected_token = get_available_token(db, threshold=60*60, prefer_access_token=True)
-        if not selected_token:
-            return ""
+    if configs.auto_seed:
+        # 從資料庫獲取可用的 token 列表
+        with next(get_db()) as db:
+            selected_token = get_available_token(db, threshold=60*60, prefer_access_token=True)
+        
+        if seed and selected_token:
+            if seed not in globals.seed_map.keys():
+                globals.seed_map[seed] = {"token": selected_token, "conversations": []}
+                with open(globals.SEED_MAP_FILE, "w") as f:
+                    json.dump(globals.seed_map, f, indent=4)
+            else:
+                req_token = globals.seed_map[seed]["token"]
+            return req_token
 
-        update_token_timestamp(db, selected_token)
-        return selected_token
+        # API
+        if req_token in configs.authorization_list:
+            if selected_token:
+                with next(get_db()) as db:
+                    update_token_timestamp(db, req_token)
+                return selected_token
+            else:
+                return ""
+        else:
+            return req_token
+    else:
+        seed = req_token
+        if seed not in globals.seed_map.keys():
+            raise HTTPException(status_code=401, detail={"error": "Invalid Seed"})
+        return globals.seed_map[seed]["token"]
     
     
 async def verify_token(req_token):

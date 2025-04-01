@@ -42,6 +42,7 @@ security_scheme = HTTPBearer()
 async def startup_event():
     init_db()
 
+from app import app
 
 import api.chat2api
 
