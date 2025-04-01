@@ -6,6 +6,8 @@ from fastapi.responses import Response
 
 from app import app
 from gateway.chatgpt import chatgpt_html
+from utils.database import get_db
+from fastapi import Depends
 from utils.kv_utils import set_value_for_key_list
 
 with open("templates/gpts_context.json", "r", encoding="utf-8") as f:
@@ -13,8 +15,8 @@ with open("templates/gpts_context.json", "r", encoding="utf-8") as f:
 
 
 @app.get("/gpts")
-async def get_gpts(request: Request):
-    return await chatgpt_html(request)
+async def get_gpts(request: Request, db=Depends(get_db)):
+    return await chatgpt_html(request, db=db)
 
 @app.get("/gpts.data")
 async def get_gpts(request: Request):
@@ -25,7 +27,8 @@ async def get_gpts(request: Request):
 
 
 @app.get("/g/g-{gizmo_id}")
-async def get_gizmo_json(request: Request, gizmo_id: str):
+@app.get("/g/g-{gizmo_id}/{path:path}")
+async def get_gizmo_json(request: Request, gizmo_id: str, path: str = "", db=Depends(get_db)):
     params = request.query_params
     if params.get("_routes") == "routes/g.$gizmoId._index":
         token = request.cookies.get("token")
@@ -36,4 +39,4 @@ async def get_gizmo_json(request: Request, gizmo_id: str):
         response_str = json.dumps(user_gpts_context, separators=(',', ':'), ensure_ascii=False)
         return Response(content=response_str, media_type="text/x-script; charset=utf-8")
     else:
-        return await chatgpt_html(request)
+        return await chatgpt_html(request, db=db)
