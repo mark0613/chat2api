@@ -23,6 +23,7 @@ from utils.Client import Client
 from utils.Logger import logger
 from utils.configs import x_sign, turnstile_solver_url, chatgpt_base_url_list, no_sentinel, sentinel_proxy_url_list, \
     force_no_history
+from utils.database import get_db_context
 
 banned_paths = [
     "backend-api/accounts/logout_all",
@@ -681,7 +682,8 @@ async def reverse_proxy(request: Request, path: str):
 
     for chatgpt_path in chatgpt_paths:
         if re.match(chatgpt_path, path):
-            return await chatgpt_html(request)
+            with get_db_context() as db:
+                return await chatgpt_html(request, db=db)
 
     for redirect_path in redirect_paths:
         if re.match(redirect_path, path):
