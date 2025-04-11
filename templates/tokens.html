@@ -48,13 +48,13 @@
             let currentTokenId = null;
 
             if (apiPrefix === "None") {
-                uploadForm.action = "/token/add";
-                clearForm.action = "/token/clear";
-                errorTokensUrl = "/token/list";
+                uploadForm.action = "/api/token/add";
+                clearForm.action = "/api/token/clear";
+                errorTokensUrl = "/api/token/list";
             } else {
-                uploadForm.action = `/${apiPrefix}/token/add`;
-                clearForm.action = `/${apiPrefix}/token/clear`;
-                errorTokensUrl = `/${apiPrefix}/token/list`;
+                uploadForm.action = `/${apiPrefix}/api/token/add`;
+                clearForm.action = `/${apiPrefix}/api/token/clear`;
+                errorTokensUrl = `/${apiPrefix}/api/token/list`;
             }
 
             // 自定義顯示 popup 的函數
@@ -206,8 +206,8 @@
             // 執行標記為錯誤的操作
             async function executeMarkAsError(tokenId) {
                 const url = apiPrefix === "None" ? 
-                    `/token/mark-error/${tokenId}` : 
-                    `/${apiPrefix}/token/mark-error/${tokenId}`;
+                    `/api/token/mark-error/${tokenId}` : 
+                    `/${apiPrefix}/api/token/mark-error/${tokenId}`;
                     
                 try {
                     const response = await fetch(url, {
@@ -230,8 +230,8 @@
             // 執行刪除操作
             async function executeDeleteToken(tokenId) {
                 const url = apiPrefix === "None" ? 
-                    `/token/delete/${tokenId}` : 
-                    `/${apiPrefix}/token/delete/${tokenId}`;
+                    `/api/token/delete/${tokenId}` : 
+                    `/${apiPrefix}/api/token/delete/${tokenId}`;
                     
                 try {
                     const response = await fetch(url, {

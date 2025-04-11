@@ -56,9 +56,12 @@ if enable_gateway:
     app.add_middleware(TokenCheckMiddleware)
     app.add_middleware(AuthMiddleware)
     
-    app.include_router(user_routes.router)
+    # API
+    app.include_router(user_routes.router, prefix="/api")
+    app.include_router(token_routes.router, prefix="/api")
+
+    # Views
     app.include_router(user_views.router)
-    app.include_router(token_routes.router)
     app.include_router(token_views.router)
     
     import gateway.share
