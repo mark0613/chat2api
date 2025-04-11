@@ -80,15 +80,3 @@ async def token_error_page(
             "user": user
         }
     )
-
-
-@router.get("/403")
-async def forbidden_page(request: Request):
-    """403 頁面"""
-    return templates.TemplateResponse(
-        "403.html",
-        {
-            "request": request,
-            "api_prefix": api_prefix
-        }
-    )

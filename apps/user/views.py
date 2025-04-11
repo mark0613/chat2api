@@ -4,6 +4,7 @@ from typing import Optional
 
 from apps.user.utils import decode_token
 from app import templates
+from utils.configs import api_prefix
 
 router = APIRouter(tags=["user_views"])
 
@@ -20,9 +21,20 @@ async def register_page(request: Request, redirect_url: Optional[str] = Query(No
         "login_register.html", 
         {"request": request, "active_tab": "register", "redirect_url": redirect_url}
     )
+
 @router.get("/logout")
 async def logout_redirect():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(key="jwt")
     response.delete_cookie(key="token")
     return response
+
+@router.get("/403")
+async def forbidden_page(request: Request):
+    return templates.TemplateResponse(
+        "403.html",
+        {
+            "request": request,
+            "api_prefix": api_prefix
+        }
+    )
