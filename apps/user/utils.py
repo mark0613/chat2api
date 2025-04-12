@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -91,4 +91,32 @@ def get_admin_user(user: User = Depends(get_current_user)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Access prohibited"
         )
+    return user
+
+def get_current_user_from_cookie(
+    request: Request,
+    jwt: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    if not jwt:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    data = decode_token(jwt)
+    
+    if data is None or "id" not in data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
+    user = db.query(User).filter(User.id == data["id"]).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
     return user

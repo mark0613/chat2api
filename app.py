@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from middleware.auth import AuthMiddleware
 from middleware.token import TokenCheckMiddleware
+from middleware.role import RoleMiddleware
 from utils.configs import enable_gateway, api_prefix
 from utils.database import init_db
 
@@ -49,20 +50,25 @@ import api.chat2api
 if enable_gateway:
     from apps.user import routes as user_routes
     from apps.user import views as user_views
+    from apps.user import admin_routes as user_admin_routes
+    from apps.user import admin_views as user_admin_views
     from apps.token import routes as token_routes
     from apps.token import views as token_views
 
     # 中間件添加的順序與執行順序相反 - 後添加的先執行
     app.add_middleware(TokenCheckMiddleware)
+    app.add_middleware(RoleMiddleware)
     app.add_middleware(AuthMiddleware)
     
     # API
     app.include_router(user_routes.router, prefix="/api")
     app.include_router(token_routes.router, prefix="/api")
+    app.include_router(user_admin_routes.router, prefix="/api")
 
     # Views
     app.include_router(user_views.router)
     app.include_router(token_views.router)
+    app.include_router(user_admin_views.router)
     
     import gateway.share
     import gateway.chatgpt

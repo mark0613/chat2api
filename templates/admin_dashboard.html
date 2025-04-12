@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 全局樣式 */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        /* 側邊欄樣式 */
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            transition: all 0.3s;
+        }
+        
+        /* 內容區域樣式 */
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .content {
+                margin-left: 0;
+            }
+            .mobile-nav {
+                display: flex;
+            }
+        }
+
+        /* 自定義 popup 樣式 */
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 移動端導航欄 -->
+    <div class="mobile-nav bg-gray-800 text-white p-4 flex justify-between items-center md:hidden">
+        <h1 class="text-xl font-bold">管理員後台</h1>
+        <button id="toggleSidebar" class="text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- 側邊欄 -->
+    <div class="sidebar bg-gray-800 text-white w-64 py-4 px-6 hidden md:block">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-xl font-bold">管理員後台</h1>
+            <button id="closeSidebar" class="text-white md:hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <nav>
+            <ul>
+                <li class="mb-2">
+                    <a href="/admin" class="block p-2 rounded {{ 'bg-blue-600' if active_tab == 'dashboard' else 'hover:bg-gray-700' }}">
+                        <div class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            儀表板
+                        </div>
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/admin/users" class="block p-2 rounded {{ 'bg-blue-600' if active_tab == 'users' else 'hover:bg-gray-700' }}">
+                        <div class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            使用者管理
+                        </div>
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/admin/tokens" class="block p-2 rounded {{ 'bg-blue-600' if active_tab == 'tokens' else 'hover:bg-gray-700' }}">
+                        <div class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                            Token 管理
+                        </div>
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/" class="block p-2 rounded hover:bg-gray-700">
+                        <div class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            返回首頁
+                        </div>
+                    </a>
+                </li>
+                <li class="mb-2">
+                    <a href="/logout" class="block p-2 rounded hover:bg-gray-700">
+                        <div class="flex items-center text-red-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            登出
+                        </div>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- 內容區域 -->
+    <div class="content">
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    {% if active_tab == 'dashboard' %}
+                        儀表板
+                    {% elif active_tab == 'users' %}
+                        使用者管理
+                    {% elif active_tab == 'tokens' %}
+                        Token 管理
+                    {% endif %}
+                </h2>
+                <div class="text-sm text-gray-600">
+                    歡迎，<span class="font-semibold">{{ user.name }}</span>
+                </div>
+            </div>
+            
+            {% if active_tab == 'dashboard' %}
+                <!-- 儀表板內容 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <a href="/admin/users" class="bg-blue-100 p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+                        <h3 class="text-xl font-semibold mb-2 text-blue-800">使用者管理</h3>
+                        <p class="text-blue-600">管理系統中的所有使用者帳號</p>
+                    </a>
+                    <a href="/admin/tokens" class="bg-purple-100 p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+                        <h3 class="text-xl font-semibold mb-2 text-purple-800">Token 管理</h3>
+                        <p class="text-purple-600">管理 ChatGPT API 的 Token</p>
+                    </a>
+                    <a href="/" class="bg-green-100 p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+                        <h3 class="text-xl font-semibold mb-2 text-green-800">返回首頁</h3>
+                        <p class="text-green-600">回到 Chat2API 主頁面</p>
+                    </a>
+                </div>
+                
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">系統資訊</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="mb-2">
+                            <span class="font-semibold">管理員:</span> {{ user.name }} ({{ user.email }})
+                        </p>
+                        <p class="mb-2">
+                            <span class="font-semibold">最後活動時間:</span> {{ user.last_active.strftime('%Y-%m-%d %H:%M:%S') if user.last_active else '未知' }}
+                        </p>
+                    </div>
+                </div>
+            {% elif active_tab == 'users' %}
+                <!-- 使用者管理內容 -->
+                <div id="usersContent">
+                    <div class="bg-white rounded-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名稱</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">郵箱</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最後活動</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">載入中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% elif active_tab == 'tokens' %}
+                <!-- Token 管理內容 -->
+                <div id="tokensContent">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <!-- 添加 Token -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold mb-4">添加 Token</h3>
+                            <form id="uploadForm" class="mb-4">
+                                <div class="mb-4">
+                                    <label for="tokenInput" class="block text-gray-700 mb-2">Token</label>
+                                    <input type="text" id="tokenInput" name="token" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="輸入你的 Token">
+                                </div>
+                                <div class="mb-4">
+                                    <label for="descriptionInput" class="block text-gray-700 mb-2">描述</label>
+                                    <input type="text" id="descriptionInput" name="description" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="輸入描述（例如：用途、來源等）">
+                                </div>
+                                <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">添加</button>
+                            </form>
+                        </div>
+                        
+                        <!-- 統計和清空 -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold mb-4">Tokens 統計</h3>
+                            <div class="mb-4">
+                                <p class="text-gray-700">可用 Tokens 數量：<span id="tokensCount" class="text-blue-600 font-bold">{{ tokens_count }}</span></p>
+                                <p class="text-gray-700">錯誤 Tokens 數量：<span id="errorTokensCount" class="text-red-600 font-bold">{{ error_tokens_count }}</span></p>
+                            </div>
+                            <form id="clearForm" class="mb-4">
+                                <button type="submit" class="w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">清空所有 Tokens</button>
+                            </form>
+                            <p class="text-sm text-gray-500 text-center">清空操作會刪除所有 Tokens，包括錯誤的 Tokens。此操作不可撤銷！</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Tokens 列表 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                        <h3 class="text-xl font-bold mb-4">可用 Tokens 列表</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="border p-2 text-left">Token</th>
+                                        <th class="border p-2 text-left">描述</th>
+                                        <th class="border p-2 text-left">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tokensList">
+                                    <tr>
+                                        <td colspan="3" class="border p-4 text-center text-gray-500">載入中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 錯誤 Tokens 列表 -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-bold mb-4">錯誤 Tokens 列表</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="border p-2 text-left">Token</th>
+                                        <th class="border p-2 text-left">描述</th>
+                                        <th class="border p-2 text-left">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="errorTokensList">
+                                    <tr>
+                                        <td colspan="3" class="border p-4 text-center text-gray-500">載入中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <!-- 自定義彈窗 -->
+    <div id="customPopup" class="popup">
+        <div class="popup-content">
+            <div class="flex items-center mb-4">
+                <div id="popupIcon" class="mr-3"></div>
+                <p id="popupMessage" class="text-lg"></p>
+            </div>
+            <div class="flex justify-end">
+                <button id="closePopup" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-4 rounded">關閉</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 確認彈窗 -->
+    <div id="confirmPopup" class="popup">
+        <div class="popup-content">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-gray-900 mb-2">確認操作</h3>
+                <p id="confirmMessage" class="text-gray-700"></p>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button id="confirmNo" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-4 rounded">取消</button>
+                <button id="confirmYes" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-4 rounded">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ----- 初始化全局函數 -----
+            // 用戶管理相關函數
+            window.executeToggleUserActive = async function(userId) {
+                try {
+                    console.log('Toggling user active status for:', userId);
+                    const formData = new FormData();
+                    formData.append('active', 'toggle');
+                    
+                    const response = await fetch(`${apiBaseUrl}/api/admin/users/${userId}/update`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || '操作失敗');
+                    }
+                    
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        showPopup('用戶狀態已更新', 'success');
+                        if (window.loadUsers) window.loadUsers();
+                    } else {
+                        throw new Error('操作未成功完成');
+                    }
+                } catch (error) {
+                    console.error('Error toggling user active status:', error);
+                    showPopup(`更新用戶狀態失敗: ${error.message}`, 'error');
+                }
+            };
+            
+            window.executeToggleUserRole = async function(userId) {
+                try {
+                    console.log('Toggling user role for:', userId);
+                    const formData = new FormData();
+                    formData.append('role', 'toggle');
+                    
+                    const response = await fetch(`${apiBaseUrl}/api/admin/users/${userId}/update`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || '操作失敗');
+                    }
+                    
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        showPopup('用戶角色已更新', 'success');
+                        if (window.loadUsers) window.loadUsers();
+                    } else {
+                        throw new Error('操作未成功完成');
+                    }
+                } catch (error) {
+                    console.error('Error toggling user role:', error);
+                    showPopup(`更新用戶角色失敗: ${error.message}`, 'error');
+                }
+            };
+            
+            // Token 相關函數
+            window.executeMarkAsError = async function(tokenId) {
+                try {
+                    console.log('Marking token as error:', tokenId);
+                    const url = `${apiBaseUrl}/api/token/mark-error/${tokenId}`;
+                    console.log('URL:', url);
+                    
+                    const response = await fetch(url, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        if (window.loadTokens) window.loadTokens();
+                        showPopup('Token 已標記為錯誤', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error marking token as error:', error);
+                    showPopup('標記 token 為錯誤時發生錯誤', 'error');
+                }
+            };
+            
+            window.executeDeleteToken = async function(tokenId) {
+                try {
+                    console.log('Deleting token:', tokenId);
+                    const url = `${apiBaseUrl}/api/token/delete/${tokenId}`;
+                    console.log('URL:', url);
+                    
+                    const response = await fetch(url, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        if (window.loadTokens) window.loadTokens();
+                        showPopup('Token 已刪除', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error deleting token:', error);
+                    showPopup('刪除 token 時發生錯誤', 'error');
+                }
+            };
+            
+            window.executeClearTokens = async function() {
+                try {
+                    console.log('Clearing all tokens');
+                    const response = await fetch(`${apiBaseUrl}/api/token/clear`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        if (window.loadTokens) window.loadTokens();
+                        showPopup('所有 Tokens 已清空', 'success');
+                    } else {
+                        const errorData = await response.json();
+                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error clearing tokens:', error);
+                    showPopup('清空 tokens 時發生錯誤', 'error');
+                }
+            };
+
+            // 側邊欄切換功能
+            const toggleSidebar = document.getElementById('toggleSidebar');
+            const closeSidebar = document.getElementById('closeSidebar');
+            const sidebar = document.querySelector('.sidebar');
+
+            if (toggleSidebar) {
+                toggleSidebar.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                    sidebar.classList.toggle('hidden');
+                    sidebar.classList.toggle('md:block');
+                });
+            }
+
+            if (closeSidebar) {
+                closeSidebar.addEventListener('click', function() {
+                    sidebar.classList.remove('show');
+                    sidebar.classList.add('hidden');
+                    sidebar.classList.add('md:block');
+                });
+            }
+
+            // 初始化變數
+            const apiPrefix = "{{ api_prefix }}";
+            const activeTab = "{{ active_tab }}";
+            let apiBaseUrl = "";
+            if (apiPrefix && apiPrefix !== "None") {
+                apiBaseUrl = `/${apiPrefix}`;
+            }
+            
+            // 確認彈窗相關變數
+            const confirmPopup = document.getElementById('confirmPopup');
+            const confirmMessage = document.getElementById('confirmMessage');
+            const confirmButton = document.getElementById('confirmYes');
+            const cancelButton = document.getElementById('confirmNo');
+            let currentAction = null;
+            let currentUserId = {{ user.id }};
+            let currentTokenId = null;
+            
+            console.log('Current user ID:', currentUserId);
+            
+            // 自定義顯示彈窗的函數
+            window.showPopup = function(message, type = 'info') {
+                const popup = document.getElementById('customPopup');
+                const popupMessage = document.getElementById('popupMessage');
+                const popupIcon = document.getElementById('popupIcon');
+                
+                popupMessage.textContent = message;
+                
+                // 根據類型設置圖標
+                if (type === 'success') {
+                    popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                } else if (type === 'error') {
+                    popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
+                } else {
+                    popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                }
+                
+                popup.style.display = 'flex';
+                
+                // 3秒後自動關閉
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                }, 3000);
+            }
+            
+            // 顯示確認彈窗的函數
+            window.showConfirm = function(message, action, userId = null, tokenId = null) {
+                confirmMessage.textContent = message;
+                currentAction = action;
+                currentUserId = userId;
+                currentTokenId = tokenId;
+                confirmPopup.style.display = 'flex';
+            }
+            
+            // 關閉彈窗的點擊事件
+            document.getElementById('closePopup').addEventListener('click', () => {
+                document.getElementById('customPopup').style.display = 'none';
+            });
+            
+            // 確認按鈕事件
+            confirmButton.addEventListener('click', async () => {
+                console.log('Confirm action:', currentAction, 'User ID:', currentUserId, 'Token ID:', currentTokenId);
+                confirmPopup.style.display = 'none';
+                
+                try {
+                    if (currentAction === 'mark-error' && currentTokenId) {
+                        await window.executeMarkAsError(currentTokenId);
+                    } else if (currentAction === 'delete-token' && currentTokenId) {
+                        await window.executeDeleteToken(currentTokenId);
+                    } else if (currentAction === 'clear-tokens') {
+                        await window.executeClearTokens();
+                    } else if (currentAction === 'toggle-user-active' && currentUserId) {
+                        await window.executeToggleUserActive(currentUserId);
+                    } else if (currentAction === 'toggle-user-role' && currentUserId) {
+                        await window.executeToggleUserRole(currentUserId);
+                    }
+                } catch (error) {
+                    console.error('Error in confirm action:', error);
+                    showPopup(`操作失敗: ${error.message}`, 'error');
+                }
+                
+                // 重置當前操作
+                currentAction = null;
+                currentUserId = null;
+                currentTokenId = null;
+            });
+            
+            // 取消按鈕事件
+            cancelButton.addEventListener('click', () => {
+                confirmPopup.style.display = 'none';
+                currentAction = null;
+                currentUserId = null;
+                currentTokenId = null;
+            });
+
+            // ============= 使用者管理功能 =============
+            if (activeTab === 'users') {
+                // 載入使用者列表
+                window.loadUsers = async function() {
+                    try {
+                        const response = await fetch(`${apiBaseUrl}/api/admin/users`);
+                        if (!response.ok) {
+                            throw new Error('獲取使用者列表失敗');
+                        }
+                        
+                        const data = await response.json();
+                        const usersTableBody = document.getElementById('usersTableBody');
+                        
+                        if (data.status === 'success' && data.users && data.users.length > 0) {
+                            usersTableBody.innerHTML = '';
+                            
+                            data.users.forEach(user => {
+                                const lastActive = user.last_active ? new Date(user.last_active).toLocaleString() : '未知';
+                                
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td class="px-6 py-4 whitespace-nowrap">${user.id}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">${user.name}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">${user.email}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        ${user.active ? 
+                                            '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>' : 
+                                            '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>'}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full">
+                                            ${user.role}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">${lastActive}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        ${user.id !== currentUserId ? `
+                                            <button onclick="executeToggleUserActive(${user.id})" class="${user.active ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'} text-white py-1 px-2 rounded mr-2">
+                                                ${user.active ? 'Disable' : 'Enable'}
+                                            </button>
+                                            <button onclick="executeToggleUserRole(${user.id})" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">
+                                                ${user.role === 'admin' ? '設為 User' : '設為 Admin'}
+                                            </button>
+                                        ` : '<span class="text-gray-500">（當前用戶）</span>'}
+                                    </td>
+                                `;
+                                usersTableBody.appendChild(tr);
+                            });
+                        } else {
+                            usersTableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">沒有找到使用者數據</td>
+                                </tr>
+                            `;
+                        }
+                    } catch (error) {
+                        console.error('Error loading users:', error);
+                        document.getElementById('usersTableBody').innerHTML = `
+                            <tr>
+                                <td colspan="7" class="px-6 py-4 text-center text-red-500">載入使用者失敗: ${error.message}</td>
+                            </tr>
+                        `;
+                    }
+                };
+
+                window.loadUsers();
+            }
+            
+            // ============= Token 管理功能 =============
+            if (activeTab === 'tokens') {
+                const uploadForm = document.getElementById('uploadForm');
+                const clearForm = document.getElementById('clearForm');
+                const tokensList = document.getElementById('tokensList');
+                const errorTokensList = document.getElementById('errorTokensList');
+                
+                // 設置表單動作 URL
+                const tokenAddUrl = `${apiBaseUrl}/api/token/add`;
+                const tokenClearUrl = `${apiBaseUrl}/api/token/clear`;
+                const tokenListUrl = `${apiBaseUrl}/api/token/list`;
+                
+                // 載入 tokens 和 error tokens
+                window.loadTokens = async function() {
+                    try {
+                        const response = await fetch(tokenListUrl);
+                        const data = await response.json();
+                        
+                        // 更新正常 tokens 列表
+                        tokensList.innerHTML = '';
+                        data.tokens.forEach(token => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td class="border p-2 truncate max-w-[200px]">${token.token}</td>
+                                <td class="border p-2">${token.description || '無描述'}</td>
+                                <td class="border p-2">
+                                    <button onclick="showConfirm('確定要將此 Token 標記為錯誤嗎？', 'mark-error', null, ${token.id})" class="bg-yellow-500 text-white py-1 px-2 rounded hover:bg-yellow-600 mr-2">標記為錯誤</button>
+                                    <button onclick="showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！', 'delete-token', null, ${token.id})" class="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600">刪除</button>
+                                </td>
+                            `;
+                            tokensList.appendChild(tr);
+                        });
+                        
+                        if (data.tokens.length === 0) {
+                            tokensList.innerHTML = `
+                                <tr>
+                                    <td colspan="3" class="border p-4 text-center text-gray-500">暫無可用 Token</td>
+                                </tr>
+                            `;
+                        }
+                        
+                        // 更新錯誤 tokens 列表
+                        errorTokensList.innerHTML = '';
+                        data.error_tokens.forEach(token => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td class="border p-2 truncate max-w-[200px]">${token.token}</td>
+                                <td class="border p-2">${token.description || '無描述'}</td>
+                                <td class="border p-2">
+                                    <button onclick="showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！', 'delete-token', null, ${token.id})" class="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600">刪除</button>
+                                </td>
+                            `;
+                            errorTokensList.appendChild(tr);
+                        });
+                        
+                        if (data.error_tokens.length === 0) {
+                            errorTokensList.innerHTML = `
+                                <tr>
+                                    <td colspan="3" class="border p-4 text-center text-gray-500">暫無錯誤 Token</td>
+                                </tr>
+                            `;
+                        }
+                        
+                        // 更新計數
+                        document.getElementById('tokensCount').textContent = data.tokens.length;
+                        document.getElementById('errorTokensCount').textContent = data.error_tokens.length;
+                    } catch (error) {
+                        console.error('Error loading tokens:', error);
+                        showPopup(`載入 tokens 失敗: ${error.message}`, 'error');
+                        errorTokensList.innerHTML = `
+                            <tr>
+                                <td colspan="3" class="border p-4 text-center text-red-500">載入失敗: ${error.message}</td>
+                            </tr>
+                        `;
+                        tokensList.innerHTML = `
+                            <tr>
+                                <td colspan="3" class="border p-4 text-center text-red-500">載入失敗: ${error.message}</td>
+                            </tr>
+                        `;
+                    }
+                };
+
+                // 初始載入
+                window.loadTokens();
+
+                // 添加 Token
+                if (uploadForm) {
+                    uploadForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const tokenInput = document.getElementById('tokenInput');
+                        const descriptionInput = document.getElementById('descriptionInput');
+                        
+                        if (!tokenInput.value) {
+                            showPopup('Token 不能為空', 'error');
+                            return;
+                        }
+                        
+                        const formData = new FormData();
+                        formData.append('token', tokenInput.value);
+                        formData.append('description', descriptionInput.value || '手動添加');
+                        
+                        try {
+                            const response = await fetch(tokenAddUrl, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            if (response.ok) {
+                                tokenInput.value = '';
+                                descriptionInput.value = '';
+                                loadTokens();
+                                showPopup('Token 添加成功', 'success');
+                            } else {
+                                const errorData = await response.json();
+                                showPopup(`錯誤: ${errorData.detail}`, 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error adding token:', error);
+                            showPopup('添加 token 時發生錯誤', 'error');
+                        }
+                    });
+                }
+
+                // 清空所有 Tokens
+                if (clearForm) {
+                    clearForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        showConfirm('確定要清空所有 Tokens 嗎？這個操作不可撤銷！', 'clear-tokens');
+                    });
+                }
+
+                // 為全局作用域定義函數，以便從HTML中調用
+                window.executeMarkAsError = executeMarkAsError;
+                window.executeDeleteToken = executeDeleteToken;
+                window.executeClearTokens = executeClearTokens;
+            }
+        });
+    </script>
+</body>
+</html>

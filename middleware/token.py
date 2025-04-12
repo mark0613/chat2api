@@ -14,7 +14,7 @@ class TokenCheckMiddleware(BaseHTTPMiddleware):
         self.excluded_paths = [
             "/login", "/register", "/user/login", "/user/register", "/logout",
             "/static", "/favicon.ico", "/api", "/docs", "/redoc", "/token_error", "/403",
-            "/tokens", "/token/", "/user/", "/v1"
+            "/token/", "/user/", "/admin", "/v1", "/api/"
         ]
 
     async def dispatch(self, request: Request, call_next):

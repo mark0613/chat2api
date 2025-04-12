@@ -16,11 +16,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.excluded_paths = [
             "/login", "/register", "/user/login", "/user/register", "/logout",
             "/static", "/favicon.ico", "/api", "/docs", "/redoc", "/token_error", "/403",
-            "/v1"
+            "/v1", "/admin/api"
         ]
         # 需要檢查 token 的路徑
         self.token_required_paths = [
-            "/", "/c/", "/settings", "/profile"
+            "/", "/c/", "/settings", "/profile", "/admin"
         ]
 
     async def dispatch(self, request: Request, call_next):
