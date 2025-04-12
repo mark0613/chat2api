@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from middleware.auth import AuthMiddleware
 from middleware.token import TokenCheckMiddleware
 from middleware.role import RoleMiddleware
+from middleware.user import UserActivityMiddleware
 from utils.configs import enable_gateway, api_prefix
 from utils.database import init_db
 
@@ -58,6 +59,7 @@ if enable_gateway:
     # 中間件添加的順序與執行順序相反 - 後添加的先執行
     app.add_middleware(TokenCheckMiddleware)
     app.add_middleware(RoleMiddleware)
+    app.add_middleware(UserActivityMiddleware)
     app.add_middleware(AuthMiddleware)
     
     # API
