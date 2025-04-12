@@ -81,12 +81,18 @@ def add_new_token(
         raise HTTPException(status_code=400, detail="Token and description cannot be empty")
     
     try:
-        add_token(db, token, description, user.id)
+        _, error_message = add_token(db, token, description, user.id)
+        if error_message:
+            if "已存在" in error_message:
+                raise HTTPException(status_code=409, detail=error_message)
+            raise HTTPException(status_code=500, detail=error_message)
+            
         return {"status": "success", "message": "Token added successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error adding token: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error adding token: {str(e)}")
-
 
 @router.post("/delete/{token_id}")
 def remove_token(

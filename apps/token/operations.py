@@ -2,6 +2,7 @@ import time
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from apps.token.models import Token
 from utils.Logger import logger
@@ -37,6 +38,11 @@ def get_all_error_tokens(db: Session):
 
 def add_token(db: Session, token_value: str, description: str, user_id: int):
     """添加一個新的 token，並自動檢查其類型"""
+    existing_token = db.query(Token).filter(Token.token == token_value).first()
+    if existing_token:
+        logger.warning(f"Attempted to add duplicate token: {token_value[:5]}...")
+        return None, "Token 已存在，無法重複添加"
+        
     is_access_token, is_refresh_token = check_token_type(token_value)
     
     # 創建 token 記錄
@@ -45,19 +51,27 @@ def add_token(db: Session, token_value: str, description: str, user_id: int):
         description=description, 
         created_by=user_id,
         is_refresh_token=is_refresh_token,
-        is_error=not (is_access_token or is_refresh_token)  # 如果既不是 access_token 也不是 refresh_token，則標記為錯誤
+        is_error=not (is_access_token or is_refresh_token)
     )
     
-    db.add(token)
-    db.commit()
-    
-    if not (is_access_token or is_refresh_token):
-        logger.warning(f"Added invalid token marked as error: {token_value[:5]}...")
-    else:
-        token_type = "refresh_token" if is_refresh_token else "access_token"
-        logger.info(f"Added new {token_type} with description: {description}")
-    
-    return token
+    try:
+        db.add(token)
+        db.commit()
+        
+        if not (is_access_token or is_refresh_token):
+            logger.warning(f"Added invalid token marked as error: {token_value[:5]}...")
+        else:
+            token_type = "refresh_token" if is_refresh_token else "access_token"
+            logger.info(f"Added new {token_type} with description: {description}")
+        
+        return token, None
+    except IntegrityError:
+        db.rollback()
+        return None, "Token 已存在，無法重複添加"
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error adding token: {str(e)}")
+        return None, f"添加 Token 時發生錯誤: {str(e)}"
 
 
 def mark_token_as_error(db: Session, token_value: str):
