@@ -13,7 +13,7 @@ from app import app, templates, security_scheme
 from chatgpt.ChatService import ChatService
 from chatgpt.authorization import refresh_all_tokens
 from utils.Logger import logger
-from utils.configs import api_prefix, scheduled_refresh
+from utils.configs import api_prefix, scheduled_refresh, authorization_list
 from utils.retry import async_retry
 from utils.database import get_db, get_db_context
 from apps.token.operations import mark_token_as_error, get_available_token
@@ -98,3 +98,53 @@ async def send_conversation(request: Request, credentials: HTTPAuthorizationCred
         await chat_service.close_client()
         logger.error(f"Server error, {str(e)}")
         raise HTTPException(status_code=500, detail="Server error")
+
+
+@app.get(f"/{api_prefix}/v1/models" if api_prefix else "/v1/models")
+async def get_models(request: Request, credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
+    req_token = credentials.credentials
+    
+    if req_token not in authorization_list:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid token")
+
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "gpt-4",
+                "object": "model",
+                "created": 1687882411,
+                "owned_by": "openai"
+            },
+            {
+                "id": "o3-mini",
+                "object": "model",
+                "created": 1737146383,
+                "owned_by": "system"
+            },
+            {
+                "id": "o3-mini-high",
+                "object": "model",
+                "created": 1737146383,
+                "owned_by": "system"
+            },
+            {
+                "id": "o1",
+                "object": "model",
+                "created": 1734375816,
+                "owned_by": "system"
+            },
+            {
+                "id": "gpt-4o",
+                "object": "model",
+                "created": 1715367049,
+                "owned_by": "system"
+            },
+            {
+                "id": "gpt-4o-mini",
+                "object": "model",
+                "created": 1721172741,
+                "owned_by": "system"
+            }
+        ]
+    }
