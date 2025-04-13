@@ -38,3 +38,7 @@ async def forbidden_page(request: Request):
             "api_prefix": api_prefix
         }
     )
+
+@router.get("/waiting", response_class=HTMLResponse)
+async def waiting_page(request: Request):
+    return templates.TemplateResponse("waiting.html", {"request": request})

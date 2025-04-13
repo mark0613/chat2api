@@ -33,7 +33,7 @@ class UserOperation:
             email=email,
             password=hashed_password,
             role=role,
-            active=True,
+            active=False,
             created_at=datetime.now(UTC),
             last_active=datetime.now(UTC)
         )

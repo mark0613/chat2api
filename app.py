@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from middleware.auth import AuthMiddleware
 from middleware.token import TokenCheckMiddleware
 from middleware.role import RoleMiddleware
-from middleware.user import UserActivityMiddleware
+from middleware.user import UserActivityMiddleware, UserActiveCheckMiddleware
 from utils.configs import enable_gateway, api_prefix
 from utils.database import init_db
 
@@ -60,6 +60,7 @@ if enable_gateway:
     app.add_middleware(TokenCheckMiddleware)
     app.add_middleware(RoleMiddleware)
     app.add_middleware(UserActivityMiddleware)
+    app.add_middleware(UserActiveCheckMiddleware)
     app.add_middleware(AuthMiddleware)
     
     # API
