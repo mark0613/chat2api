@@ -226,6 +226,7 @@
                 const email = document.getElementById('login-email').value;
                 const password = document.getElementById('login-password').value;
                 const errorElement = document.getElementById('login-error');
+                const loginButton = document.getElementById('login-button');
                 
                 // Validation
                 if (!email || !password) {
@@ -233,6 +234,11 @@
                     errorElement.style.display = 'block';
                     return;
                 }
+                
+                // 顯示處理中狀態
+                loginButton.disabled = true;
+                loginButton.textContent = '登入中...';
+                errorElement.style.display = 'none';
                 
                 // API call
                 fetch('/api/user/login', {
@@ -284,8 +290,13 @@
                     window.location.href = '/';
                 })
                 .catch(error => {
+                    // 顯示錯誤信息
                     errorElement.textContent = error.message;
                     errorElement.style.display = 'block';
+                    
+                    // 恢復按鈕狀態
+                    loginButton.disabled = false;
+                    loginButton.textContent = '登入';
                 });
             });
             
@@ -296,6 +307,7 @@
                 const password = document.getElementById('register-password').value;
                 const errorElement = document.getElementById('register-error');
                 const successElement = document.getElementById('register-success');
+                const registerButton = document.getElementById('register-button');
                 
                 // Validation
                 if (!name || !email || !password) {
@@ -311,6 +323,13 @@
                     successElement.style.display = 'none';
                     return;
                 }
+                
+                // 顯示處理中狀態
+                registerButton.disabled = true;
+                registerButton.textContent = '註冊中...';
+                errorElement.style.display = 'none';
+                successElement.textContent = '註冊中，請稍候...';
+                successElement.style.display = 'block';
                 
                 // API call
                 fetch('/api/user/register', {
@@ -330,41 +349,17 @@
                     return response.json();
                 })
                 .then(data => {
-                    // 檢查回應中是否有 redirect_url
-                    if (data.redirect_url) {
-                        try {
-                            const decoded = decodeURIComponent(data.redirect_url);
-                            // 嘗試創建 URL 對象以驗證有效性
-                            new URL(decoded);
-                            console.log("Redirecting to:", decoded);
-                            window.location.href = decoded;
-                            return;
-                        } catch (e) {
-                            console.error("Invalid redirect URL from API:", e);
-                        }
-                    }
-                    
-                    // 如果沒有有效的 API redirect_url，則嘗試使用查詢參數中的 redirect_url
-                    if (redirectUrl && redirectUrl !== 'None') {
-                        try {
-                            const decoded = decodeURIComponent(redirectUrl);
-                            new URL(decoded);
-                            console.log("Redirecting to (from query):", decoded);
-                            window.location.href = decoded;
-                            return;
-                        } catch (e) {
-                            console.error("Invalid redirect URL from query:", e);
-                        }
-                    }
-                    
-                    // 預設行為：重定向到首頁
-                    console.log("Redirecting to homepage");
                     window.location.href = '/';
                 })
                 .catch(error => {
+                    // 顯示錯誤信息
                     errorElement.textContent = error.message;
                     errorElement.style.display = 'block';
                     successElement.style.display = 'none';
+                    
+                    // 恢復按鈕狀態
+                    registerButton.disabled = false;
+                    registerButton.textContent = '註冊';
                 });
             });
             
