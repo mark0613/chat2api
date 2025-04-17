@@ -1,0 +1,64 @@
+/* 全局樣式 */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f3f4f6;
+}
+
+/* 側邊欄樣式 */
+.sidebar {
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    transition: all 0.3s;
+}
+
+/* 內容區域樣式 */
+.content {
+    margin-left: 250px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    .content {
+        margin-left: 0;
+    }
+
+    .mobile-nav {
+        display: flex;
+    }
+}
+
+/* 自定義 popup 樣式 */
+.popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.popup-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    max-width: 90%;
+    width: 400px;
+}

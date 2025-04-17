@@ -49,6 +49,8 @@ from app import app
 import api.chat2api
 
 if enable_gateway:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
     from apps.user import routes as user_routes
     from apps.user import views as user_views
     from apps.user import admin_routes as user_admin_routes
