@@ -39,26 +39,3 @@ body {
         display: flex;
     }
 }
-
-/* 自定義 popup 樣式 */
-.popup {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-}
-
-.popup-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-    max-width: 90%;
-    width: 400px;
-}

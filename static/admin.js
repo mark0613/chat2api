@@ -1,16 +1,21 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const userId = window.currentUserId;
-    const apiPrefix = window.apiPrefix;
-    const activeTab = window.activeTab;
+const loggedInUserId = window.currentUserId;
+const apiPrefix = window.apiPrefix;
+const activeTab = window.activeTab;
 
+let apiBaseUrl = "";
+if (apiPrefix && apiPrefix !== "None") {
+    apiBaseUrl = `/${apiPrefix}`;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
     // 用戶管理相關函數
-    window.executeToggleUserActive = async function (userId) {
+    window.executeToggleUserActive = async function (userIdToToggle) {
         try {
-            console.log('Toggling user active status for:', userId);
+            console.log('Toggling user active status for:', userIdToToggle);
             const formData = new FormData();
             formData.append('active', 'toggle');
 
-            const response = await fetch(`${apiBaseUrl}/api/admin/users/${userId}/update`, {
+            const response = await fetch(`${apiBaseUrl}/api/admin/users/${userIdToToggle}/update`, {
                 method: 'POST',
                 body: formData
             });
@@ -25,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showPopup('用戶狀態已更新', 'success');
                 if (window.loadUsers) window.loadUsers();
             } else {
-                throw new Error('操作未成功完成');
+                throw new Error(result.detail || '操作未成功完成');
             }
         } catch (error) {
             console.error('Error toggling user active status:', error);
@@ -33,13 +38,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    window.executeToggleUserRole = async function (userId) {
+    window.executeToggleUserRole = async function (userIdToToggle) {
         try {
-            console.log('Toggling user role for:', userId);
+            console.log('Toggling user role for:', userIdToToggle);
             const formData = new FormData();
             formData.append('role', 'toggle');
 
-            const response = await fetch(`${apiBaseUrl}/api/admin/users/${userId}/update`, {
+            const response = await fetch(`${apiBaseUrl}/api/admin/users/${userIdToToggle}/update`, {
                 method: 'POST',
                 body: formData
             });
@@ -54,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showPopup('用戶角色已更新', 'success');
                 if (window.loadUsers) window.loadUsers();
             } else {
-                throw new Error('操作未成功完成');
+                throw new Error(result.detail || '操作未成功完成');
             }
         } catch (error) {
             console.error('Error toggling user role:', error);
@@ -78,11 +83,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 showPopup('Token 已標記為錯誤', 'success');
             } else {
                 const errorData = await response.json();
-                showPopup(`錯誤: ${errorData.detail}`, 'error');
+                throw new Error(errorData.detail || `標記錯誤失敗 (HTTP ${response.status})`);
             }
         } catch (error) {
-            console.error('Error marking token as error:', error);
-            showPopup('標記 token 為錯誤時發生錯誤', 'error');
+            console.error('Error in executeMarkAsError:', error);
+            throw error;
         }
     };
 
@@ -101,11 +106,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 showPopup('Token 已刪除', 'success');
             } else {
                 const errorData = await response.json();
-                showPopup(`錯誤: ${errorData.detail}`, 'error');
+                throw new Error(errorData.detail || `刪除失敗 (HTTP ${response.status})`);
             }
         } catch (error) {
-            console.error('Error deleting token:', error);
-            showPopup('刪除 token 時發生錯誤', 'error');
+            console.error('Error in executeDeleteToken:', error);
+            throw error;
         }
     };
 
@@ -121,11 +126,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 showPopup('所有 Tokens 已清空', 'success');
             } else {
                 const errorData = await response.json();
-                showPopup(`錯誤: ${errorData.detail}`, 'error');
+                throw new Error(errorData.detail || `清空失敗 (HTTP ${response.status})`);
             }
         } catch (error) {
-            console.error('Error clearing tokens:', error);
-            showPopup('清空 tokens 時發生錯誤', 'error');
+            console.error('Error in executeClearTokens:', error);
+            throw error;
         }
     };
 
@@ -134,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeSidebar = document.getElementById('closeSidebar');
     const sidebar = document.querySelector('.sidebar');
 
-    if (toggleSidebar) {
+    if (toggleSidebar && sidebar) {
         toggleSidebar.addEventListener('click', function () {
             sidebar.classList.toggle('show');
             sidebar.classList.toggle('hidden');
@@ -142,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (closeSidebar) {
+    if (closeSidebar && sidebar) {
         closeSidebar.addEventListener('click', function () {
             sidebar.classList.remove('show');
             sidebar.classList.add('hidden');
@@ -150,164 +155,77 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // 初始化變數
-    let apiBaseUrl = "";
-    if (apiPrefix && apiPrefix !== "None") {
-        apiBaseUrl = `/${apiPrefix}`;
-    }
-
-    // 確認彈窗相關變數
-    const confirmPopup = document.getElementById('confirmPopup');
-    const confirmMessage = document.getElementById('confirmMessage');
-    const confirmButton = document.getElementById('confirmYes');
-    const cancelButton = document.getElementById('confirmNo');
-    let currentAction = null;
-    let currentUserId = userId;
-    let currentTokenId = null;
-
-    console.log('Current user ID:', currentUserId);
-
-    // 自定義顯示彈窗的函數
-    window.showPopup = function (message, type = 'info') {
-        const popup = document.getElementById('customPopup');
-        const popupMessage = document.getElementById('popupMessage');
-        const popupIcon = document.getElementById('popupIcon');
-
-        popupMessage.textContent = message;
-
-        // 根據類型設置圖標
-        if (type === 'success') {
-            popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-        } else if (type === 'error') {
-            popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
-        } else {
-            popupIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
-        }
-
-        popup.style.display = 'flex';
-
-        // 3秒後自動關閉
-        setTimeout(() => {
-            popup.style.display = 'none';
-        }, 3000);
-    }
-
-    // 顯示確認彈窗的函數
-    window.showConfirm = function (message, action, userId = null, tokenId = null) {
-        confirmMessage.textContent = message;
-        currentAction = action;
-        currentUserId = userId;
-        currentTokenId = tokenId;
-        confirmPopup.style.display = 'flex';
-    }
-
-    // 關閉彈窗的點擊事件
-    document.getElementById('closePopup').addEventListener('click', () => {
-        document.getElementById('customPopup').style.display = 'none';
-    });
-
-    // 確認按鈕事件
-    confirmButton.addEventListener('click', async () => {
-        console.log('Confirm action:', currentAction, 'User ID:', currentUserId, 'Token ID:', currentTokenId);
-        confirmPopup.style.display = 'none';
-
-        try {
-            if (currentAction === 'mark-error' && currentTokenId) {
-                await window.executeMarkAsError(currentTokenId);
-            } else if (currentAction === 'delete-token' && currentTokenId) {
-                await window.executeDeleteToken(currentTokenId);
-            } else if (currentAction === 'clear-tokens') {
-                await window.executeClearTokens();
-            } else if (currentAction === 'toggle-user-active' && currentUserId) {
-                await window.executeToggleUserActive(currentUserId);
-            } else if (currentAction === 'toggle-user-role' && currentUserId) {
-                await window.executeToggleUserRole(currentUserId);
-            }
-        } catch (error) {
-            console.error('Error in confirm action:', error);
-            showPopup(`操作失敗: ${error.message}`, 'error');
-        }
-
-        // 重置當前操作
-        currentAction = null;
-        currentUserId = null;
-        currentTokenId = null;
-    });
-
-    // 取消按鈕事件
-    cancelButton.addEventListener('click', () => {
-        confirmPopup.style.display = 'none';
-        currentAction = null;
-        currentUserId = null;
-        currentTokenId = null;
-    });
-
     // ============= 使用者管理功能 =============
     if (activeTab === 'users') {
-        // 載入使用者列表
-        window.loadUsers = async function () {
-            try {
-                const response = await fetch(`${apiBaseUrl}/api/admin/users`);
-                if (!response.ok) {
-                    throw new Error('獲取使用者列表失敗');
-                }
+        const usersTableBody = document.getElementById('usersTableBody');
 
-                const data = await response.json();
-                const usersTableBody = document.getElementById('usersTableBody');
+        if (!usersTableBody) {
+            console.error("Element with ID 'usersTableBody' not found.");
+        } else {
+            window.loadUsers = async function () {
+                try {
+                    const response = await fetch(`${apiBaseUrl}/api/admin/users`);
+                    if (!response.ok) {
+                        throw new Error('獲取使用者列表失敗');
+                    }
 
-                if (data.status === 'success' && data.users && data.users.length > 0) {
+                    const data = await response.json();
                     usersTableBody.innerHTML = '';
 
-                    data.users.forEach(user => {
-                        const lastActive = user.last_active ? new Date(user.last_active).toLocaleString() : '未知';
+                    if (data.status === 'success' && data.users && data.users.length > 0) {
+                        data.users.forEach(user => {
+                            const lastActive = user.last_active ? new Date(user.last_active).toLocaleString() : '未知';
+                            const isCurrentUser = user.id === loggedInUserId;
 
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap">${user.id}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${user.name}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${user.email}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                ${user.active ?
-                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>' :
-                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full">
-                                    ${user.role}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">${lastActive}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                ${user.id !== currentUserId ? `
-                                    <button onclick="executeToggleUserActive(${user.id})" class="${user.active ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'} text-white py-1 px-2 rounded mr-2">
-                                        ${user.active ? 'Disable' : 'Enable'}
-                                    </button>
-                                    <button onclick="executeToggleUserRole(${user.id})" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">
-                                        ${user.role === 'admin' ? '設為 User' : '設為 Admin'}
-                                    </button>
-                                ` : '<span class="text-gray-500">（當前用戶）</span>'}
-                            </td>
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap">${user.id}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">${user.name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">${user.email}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    ${user.active ?
+                                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>' :
+                                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>'}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full">
+                                        ${user.role}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">${lastActive}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    ${!isCurrentUser ? `
+                                        <button onclick="window.executeToggleUserActive(${user.id})" class="${user.active ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'} text-white py-1 px-2 rounded mr-2">
+                                            ${user.active ? 'Disable' : 'Enable'}
+                                        </button>
+                                        <button onclick="window.executeToggleUserRole(${user.id})" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">
+                                            ${user.role === 'admin' ? '設為 User' : '設為 Admin'}
+                                        </button>
+                                    ` : '<span class="text-gray-500">（當前用戶）</span>'}
+                                </td>
+                            `;
+                            usersTableBody.appendChild(tr);
+                        });
+                    } else {
+                        usersTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="7" class="px-6 py-4 text-center text-gray-500">${data.users && data.users.length === 0 ? '沒有找到使用者數據' : (data.message || '無法解析用戶數據')}</td>
+                            </tr>
                         `;
-                        usersTableBody.appendChild(tr);
-                    });
-                } else {
+                    }
+                } catch (error) {
+                    console.error('Error loading users:', error);
                     usersTableBody.innerHTML = `
                         <tr>
-                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">沒有找到使用者數據</td>
+                            <td colspan="7" class="px-6 py-4 text-center text-red-500">載入使用者失敗: ${error.message}</td>
                         </tr>
                     `;
+                    showPopup(`載入使用者失敗: ${error.message}`, 'error');
                 }
-            } catch (error) {
-                console.error('Error loading users:', error);
-                document.getElementById('usersTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-red-500">載入使用者失敗: ${error.message}</td>
-                    </tr>
-                `;
-            }
-        };
+            };
 
-        window.loadUsers();
+            window.loadUsers();
+        }
     }
 
     // ============= Token 管理功能 =============
@@ -316,134 +234,230 @@ document.addEventListener('DOMContentLoaded', function () {
         const clearForm = document.getElementById('clearForm');
         const tokensList = document.getElementById('tokensList');
         const errorTokensList = document.getElementById('errorTokensList');
+        const tokensCountEl = document.getElementById('tokensCount');
+        const errorTokensCountEl = document.getElementById('errorTokensCount');
 
-        // 設置表單動作 URL
-        const tokenAddUrl = `${apiBaseUrl}/api/token/add`;
-        const tokenClearUrl = `${apiBaseUrl}/api/token/clear`;
-        const tokenListUrl = `${apiBaseUrl}/api/token/list`;
+        if (!tokensList || !errorTokensList || !tokensCountEl || !errorTokensCountEl) {
+            console.error("One or more Token list/count elements not found.");
+        } else {
+            // 設置 API URLs
+            const tokenAddUrl = `${apiBaseUrl}/api/token/add`;
+            const tokenListUrl = `${apiBaseUrl}/api/token/list`;
 
-        // 載入 tokens 和 error tokens
-        window.loadTokens = async function () {
-            try {
-                const response = await fetch(tokenListUrl);
-                const data = await response.json();
+            // 載入 tokens 和 error tokens
+            window.loadTokens = async function () {
+                try {
+                    const response = await fetch(tokenListUrl);
+                    if (!response.ok) {
+                        throw new Error(`獲取Token列表失敗 (HTTP ${response.status})`);
+                    }
+                    const data = await response.json();
 
-                // 更新正常 tokens 列表
-                tokensList.innerHTML = '';
-                data.tokens.forEach(token => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="border p-2 truncate max-w-[200px]">${token.token}</td>
-                        <td class="border p-2">${token.description || '無描述'}</td>
-                        <td class="border p-2">
-                            <button onclick="showConfirm('確定要將此 Token 標記為錯誤嗎？', 'mark-error', null, ${token.id})" class="bg-yellow-500 text-white py-1 px-2 rounded hover:bg-yellow-600 mr-2">標記為錯誤</button>
-                            <button onclick="showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！', 'delete-token', null, ${token.id})" class="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600">刪除</button>
-                        </td>
-                    `;
-                    tokensList.appendChild(tr);
-                });
+                    // 更新正常 tokens 列表
+                    tokensList.innerHTML = '';
+                    if (data.tokens && data.tokens.length > 0) {
+                        data.tokens.forEach(token => {
+                            const tr = document.createElement('tr');
+                            const tdToken = document.createElement('td');
+                            tdToken.className = "border p-2 truncate max-w-[200px]";
+                            tdToken.textContent = token.token;
 
-                if (data.tokens.length === 0) {
-                    tokensList.innerHTML = `
-                        <tr>
-                            <td colspan="3" class="border p-4 text-center text-gray-500">暫無可用 Token</td>
-                        </tr>
-                    `;
+                            const tdDesc = document.createElement('td');
+                            tdDesc.className = "border p-2";
+                            tdDesc.textContent = token.description || '無描述';
+
+                            const tdActions = document.createElement('td');
+                            tdActions.className = "border p-2";
+
+                            // --- 標記為錯誤按鈕 (使用 addEventListener) ---
+                            const markErrorButton = document.createElement('button');
+                            markErrorButton.textContent = '標記為錯誤';
+                            markErrorButton.className = 'bg-yellow-500 text-white py-1 px-2 rounded hover:bg-yellow-600 mr-2';
+                            markErrorButton.addEventListener('click', async () => {
+                                const confirmed = await showConfirm('確定要將此 Token 標記為錯誤嗎？');
+                                if (confirmed) {
+                                    try {
+                                        await window.executeMarkAsError(token.id);
+                                        // 成功消息由 executeMarkAsError 內部處理
+                                    } catch (error) {
+                                        console.error('Error marking token as error from button:', error);
+                                        showPopup(`標記錯誤失敗: ${error.message}`, 'error'); // 顯示執行錯誤
+                                    }
+                                } else {
+                                    console.log('Mark as error cancelled.');
+                                }
+                            });
+
+                            // --- 刪除按鈕 (使用 addEventListener) ---
+                            const deleteButton = document.createElement('button');
+                            deleteButton.textContent = '刪除';
+                            deleteButton.className = 'bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600';
+                            deleteButton.addEventListener('click', async () => {
+                                const confirmed = await showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！');
+                                if (confirmed) {
+                                    try {
+                                        await window.executeDeleteToken(token.id);
+                                        // 成功消息由 executeDeleteToken 內部處理
+                                    } catch (error) {
+                                        console.error('Error deleting token from button:', error);
+                                        showPopup(`刪除失敗: ${error.message}`, 'error'); // 顯示執行錯誤
+                                    }
+                                } else {
+                                    console.log('Delete token cancelled.');
+                                }
+                            });
+
+                            tdActions.appendChild(markErrorButton);
+                            tdActions.appendChild(deleteButton);
+                            tr.appendChild(tdToken);
+                            tr.appendChild(tdDesc);
+                            tr.appendChild(tdActions);
+                            tokensList.appendChild(tr);
+                        });
+                    } else {
+                        tokensList.innerHTML = `
+                            <tr>
+                                <td colspan="3" class="border p-4 text-center text-gray-500">暫無可用 Token</td>
+                            </tr>
+                        `;
+                    }
+
+                    // --- 更新錯誤 tokens 列表 ---
+                    errorTokensList.innerHTML = ''; // 清空
+                    if (data.error_tokens && data.error_tokens.length > 0) {
+                        data.error_tokens.forEach(token => {
+                            const tr = document.createElement('tr');
+                            const tdToken = document.createElement('td');
+                            tdToken.className = "border p-2 truncate max-w-[200px]";
+                            tdToken.textContent = token.token;
+
+                            const tdDesc = document.createElement('td');
+                            tdDesc.className = "border p-2";
+                            tdDesc.textContent = token.description || '無描述';
+
+                            const tdActions = document.createElement('td');
+                            tdActions.className = "border p-2";
+
+                            // --- 刪除按鈕 (錯誤 Token) ---
+                            const deleteErrorButton = document.createElement('button');
+                            deleteErrorButton.textContent = '刪除';
+                            deleteErrorButton.className = 'bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600';
+                            deleteErrorButton.addEventListener('click', async () => {
+                                const confirmed = await showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！');
+                                if (confirmed) {
+                                    try {
+                                        await window.executeDeleteToken(token.id);
+                                    } catch (error) {
+                                        console.error('Error deleting error token from button:', error);
+                                        showPopup(`刪除失敗: ${error.message}`, 'error');
+                                    }
+                                } else {
+                                    console.log('Delete error token cancelled.');
+                                }
+                            });
+
+                            tdActions.appendChild(deleteErrorButton);
+                            tr.appendChild(tdToken);
+                            tr.appendChild(tdDesc);
+                            tr.appendChild(tdActions);
+                            errorTokensList.appendChild(tr);
+                        });
+                    } else {
+                        errorTokensList.innerHTML = `
+                            <tr>
+                                <td colspan="3" class="border p-4 text-center text-gray-500">暫無錯誤 Token</td>
+                            </tr>
+                        `;
+                    }
+
+                    // 更新計數
+                    tokensCountEl.textContent = (data.tokens && data.tokens.length) || 0;
+                    errorTokensCountEl.textContent = (data.error_tokens && data.error_tokens.length) || 0;
+
+                } catch (error) {
+                    console.error('Error loading tokens:', error);
+                    const errorMsg = `載入 tokens 失敗: ${error.message}`;
+                    showPopup(errorMsg, 'error');
+                    const errorRowHtml = `<tr><td colspan="3" class="border p-4 text-center text-red-500">${errorMsg}</td></tr>`;
+                    errorTokensList.innerHTML = errorRowHtml;
+                    tokensList.innerHTML = errorRowHtml;
+                    // 重置計數
+                    tokensCountEl.textContent = 'N/A';
+                    errorTokensCountEl.textContent = 'N/A';
                 }
+            };
 
-                // 更新錯誤 tokens 列表
-                errorTokensList.innerHTML = '';
-                data.error_tokens.forEach(token => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="border p-2 truncate max-w-[200px]">${token.token}</td>
-                        <td class="border p-2">${token.description || '無描述'}</td>
-                        <td class="border p-2">
-                            <button onclick="showConfirm('確定要刪除此 Token 嗎？這個操作不可撤銷！', 'delete-token', null, ${token.id})" class="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600">刪除</button>
-                        </td>
-                    `;
-                    errorTokensList.appendChild(tr);
-                });
+            // 初始載入
+            window.loadTokens();
 
-                if (data.error_tokens.length === 0) {
-                    errorTokensList.innerHTML = `
-                        <tr>
-                            <td colspan="3" class="border p-4 text-center text-gray-500">暫無錯誤 Token</td>
-                        </tr>
-                    `;
-                }
-
-                // 更新計數
-                document.getElementById('tokensCount').textContent = data.tokens.length;
-                document.getElementById('errorTokensCount').textContent = data.error_tokens.length;
-            } catch (error) {
-                console.error('Error loading tokens:', error);
-                showPopup(`載入 tokens 失敗: ${error.message}`, 'error');
-                errorTokensList.innerHTML = `
-                    <tr>
-                        <td colspan="3" class="border p-4 text-center text-red-500">載入失敗: ${error.message}</td>
-                    </tr>
-                `;
-                tokensList.innerHTML = `
-                    <tr>
-                        <td colspan="3" class="border p-4 text-center text-red-500">載入失敗: ${error.message}</td>
-                    </tr>
-                `;
-            }
-        };
-
-        // 初始載入
-        window.loadTokens();
-
-        // 添加 Token
-        if (uploadForm) {
-            uploadForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
+            // 添加 Token 表單提交
+            if (uploadForm) {
                 const tokenInput = document.getElementById('tokenInput');
                 const descriptionInput = document.getElementById('descriptionInput');
 
-                if (!tokenInput.value) {
-                    showPopup('Token 不能為空', 'error');
-                    return;
-                }
+                if (!tokenInput) console.error("Element 'tokenInput' not found");
+                if (!descriptionInput) console.warn("Element 'descriptionInput' not found");
 
-                const formData = new FormData();
-                formData.append('token', tokenInput.value);
-                formData.append('description', descriptionInput.value || '手動添加');
-
-                try {
-                    const response = await fetch(tokenAddUrl, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        tokenInput.value = '';
-                        descriptionInput.value = '';
-                        loadTokens();
-                        showPopup('Token 添加成功', 'success');
-                    } else {
-                        const errorData = await response.json();
-                        showPopup(`錯誤: ${errorData.detail}`, 'error');
+                uploadForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (!tokenInput || !tokenInput.value) {
+                        showPopup('Token 不能為空', 'error');
+                        return;
                     }
-                } catch (error) {
-                    console.error('Error adding token:', error);
-                    showPopup('添加 token 時發生錯誤', 'error');
-                }
-            });
-        }
 
-        // 清空所有 Tokens
-        if (clearForm) {
-            clearForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                showConfirm('確定要清空所有 Tokens 嗎？這個操作不可撤銷！', 'clear-tokens');
-            });
-        }
+                    const formData = new FormData();
+                    formData.append('token', tokenInput.value);
+                    if (descriptionInput) {
+                        formData.append('description', descriptionInput.value || '手動添加');
+                    } else {
+                        formData.append('description', '手動添加');
+                    }
 
-        // 為全局作用域定義函數，以便從HTML中調用
-        window.executeMarkAsError = executeMarkAsError;
-        window.executeDeleteToken = executeDeleteToken;
-        window.executeClearTokens = executeClearTokens;
+
+                    try {
+                        const response = await fetch(tokenAddUrl, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            tokenInput.value = '';
+                            if (descriptionInput) descriptionInput.value = '';
+                            window.loadTokens(); // 重新載入列表
+                            showPopup('Token 添加成功', 'success');
+                        } else {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || `添加失敗 (HTTP ${response.status})`);
+                        }
+                    } catch (error) {
+                        console.error('Error adding token:', error);
+                        showPopup(`添加 token 失敗: ${error.message}`, 'error');
+                    }
+                });
+            } else {
+                console.warn("Element with ID 'uploadForm' not found.");
+            }
+
+            // 清空所有 Tokens 表單提交 (使用 addEventListener)
+            if (clearForm) {
+                clearForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const confirmed = await showConfirm('確定要清空所有 Tokens 嗎？這個操作不可撤銷！');
+                    if (confirmed) {
+                        try {
+                            await window.executeClearTokens();
+                            // 成功消息由 executeClearTokens 處理
+                        } catch (error) {
+                            console.error('Error clearing tokens from form:', error);
+                            showPopup(`清空失敗: ${error.message}`, 'error'); // 顯示執行錯誤
+                        }
+                    } else {
+                        console.log('Clear tokens cancelled.');
+                    }
+                });
+            } else {
+                console.warn("Element with ID 'clearForm' not found.");
+            }
+        }
     }
 });
