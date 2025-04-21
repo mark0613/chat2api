@@ -9,10 +9,10 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
 from apps.pipeline import pipeline_manager
-from middleware.auth import AuthMiddleware
-from middleware.token import TokenCheckMiddleware
-from middleware.role import RoleMiddleware
-from middleware.user import UserActivityMiddleware, UserActiveCheckMiddleware
+from middlewares.auth import AuthMiddleware
+from middlewares.token import TokenCheckMiddleware
+from middlewares.role import RoleMiddleware
+from middlewares.user import UserActivityMiddleware, UserActiveCheckMiddleware
 from utils.configs import enable_gateway, api_prefix
 from utils.database import init_db
 
