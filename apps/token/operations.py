@@ -24,6 +24,9 @@ def check_token_type(token_value: str):
     # 既不是 access_token 也不是 refresh_token
     return False, False
 
+def get_token_by_id(db: Session, token_id: int):
+    return db.query(Token).filter(Token.id == token_id).first()
+
 
 def get_all_tokens(db: Session):
     """取得所有未處於錯誤狀態的 token"""
@@ -73,16 +76,26 @@ def add_token(db: Session, token_value: str, description: str, user_id: int):
         return None, f'添加 Token 時發生錯誤: {str(e)}'
 
 
-def mark_token_as_error(db: Session, token_value: str):
-    """將指定的 token 標記為錯誤狀態"""
-    token = db.query(Token).filter(Token.token == token_value).first()
+def update_token_status(db: Session, is_error: bool, token_value: str = "", token: Token = None):
+    """更新指定 token 的狀態"""
+    if not token:
+        token = db.query(Token).filter(Token.token == token_value).first()
     if token:
-        token.is_error = True
+        token.is_error = is_error
         db.commit()
-        logger.info(f'Marked token {token_value[:5]}... as error')
+        logger.info(f'Updated token {token_value[:5]}... status to {"error" if is_error else "valid"}')
         return True
     return False
 
+
+def mark_token_as_error(db: Session, token_value: str):
+    """將指定的 token 標記為錯誤狀態"""
+    return update_token_status(db, token_value=token_value, is_error=True)
+
+
+def mark_token_as_valid(db: Session, token_value: str):
+    """將指定的 token 標記為有效狀態"""
+    return update_token_status(db, token_value=token_value, is_error=False)
 
 def delete_token(db: Session, token_id: int):
     """刪除指定的 token"""

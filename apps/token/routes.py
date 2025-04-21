@@ -7,7 +7,8 @@ from apps.token.operations import (
     delete_token,
     get_all_error_tokens,
     get_all_tokens,
-    mark_token_as_error,
+    update_token_status as update_token_status_operation,
+    get_token_by_id,
 )
 from utils.database import get_db
 from utils.Logger import logger
@@ -103,22 +104,19 @@ def clear_tokens(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f'Error clearing tokens: {str(e)}')
 
 
-@router.post('/mark-error/{token_id}')
-def mark_token_error(request: Request, token_id: int, db: Session = Depends(get_db)):
-    """將指定 token 標記為錯誤"""
-
-    token = None
-    for t in get_all_tokens(db):
-        if t.id == token_id:
-            token = t
-            break
-
-    if not token:
-        raise HTTPException(status_code=404, detail='Token not found')
-
+@router.post('/update-status/{token_id}')
+def update_token_status(
+    request: Request,
+    token_id: int,
+    is_error: bool = Form(...),
+    db: Session = Depends(get_db),
+):
+    """更新指定 token 的狀態"""
+    token = get_token_by_id(db, token_id)
     try:
-        mark_token_as_error(db, token.token)
-        return {'status': 'success', 'message': 'Token marked as error successfully'}
+        update_token_status_operation(db, is_error, token=token)
+        return {'status': 'success', 'message': 'Token status updated successfully'}
     except Exception as e:
-        logger.error(f'Error marking token as error: {str(e)}')
-        raise HTTPException(status_code=500, detail=f'Error marking token as error: {str(e)}')
+        logger.error(f'Error updating token status: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Error updating token status: {str(e)}')
+   

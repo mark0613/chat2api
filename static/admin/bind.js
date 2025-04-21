@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function () {
-    // 將 checkValveChanges 函數暴露為全局函數
+    // 將需要的函數暴露為全局函數
     window.checkValveChanges = checkValveChanges;
     window.saveValveSettings = saveValveSettings;
 

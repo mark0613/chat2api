@@ -90,6 +90,23 @@ async function loadTokens() {
                 const tdActions = document.createElement('td');
                 tdActions.className = "border p-2";
 
+                // --- 標記為可用按鈕 (錯誤 Token) ---
+                const markAsValidButton = document.createElement('button');
+                markAsValidButton.textContent = '標記為可用';
+                markAsValidButton.className = 'bg-green-500 text-white py-1 px-2 rounded hover:bg-green-600 mr-2';
+                markAsValidButton.addEventListener('click', async () => {
+                    const confirmed = await showConfirm('確定要將此 Token 標記為可用嗎？');
+                    if (confirmed) {
+                        try {
+                            await window.executeMarkAsValid(token.id);
+                            // 成功消息由 executeMarkAsValid 內部處理
+                        } catch (error) {
+                            console.error('Error marking token as valid from button:', error);
+                            showPopup(`標記為可用失敗: ${error.message}`, 'error'); // 顯示執行錯誤
+                        }
+                    }
+                });
+
                 // --- 刪除按鈕 (錯誤 Token) ---
                 const deleteErrorButton = document.createElement('button');
                 deleteErrorButton.textContent = '刪除';
@@ -106,6 +123,7 @@ async function loadTokens() {
                     }
                 });
 
+                tdActions.appendChild(markAsValidButton);
                 tdActions.appendChild(deleteErrorButton);
                 tr.appendChild(tdToken);
                 tr.appendChild(tdDesc);
@@ -138,25 +156,35 @@ async function loadTokens() {
 };
 
 
-async function executeMarkAsError(tokenId) {
+async function executeUpdateTokenStatus(tokenId, isError) {
+    const formData = new FormData();
+    formData.append('is_error', isError);
     try {
-        const url = `${apiBaseUrl}/api/token/mark-error/${tokenId}`;
+        const url = `${apiBaseUrl}/api/token/update-status/${tokenId}`;
         const response = await fetch(url, {
-            method: 'POST'
+            method: 'POST',
+            body: formData,
         });
-
         if (response.ok) {
             if (loadTokens) loadTokens();
-            showPopup('Token 已標記為錯誤', 'success');
+            showPopup('Token 狀態已更新', 'success');
         } else {
             const errorData = await response.json();
-            throw new Error(errorData.detail || `標記錯誤失敗 (HTTP ${response.status})`);
+            throw new Error(errorData.detail || `更新狀態失敗 (HTTP ${response.status})`);
         }
     } catch (error) {
-        console.error('Error in executeMarkAsError:', error);
+        console.error('Error in executeUpdateTokenStatus:', error);
         throw error;
     }
+}
+
+async function executeMarkAsError(tokenId) {
+    await executeUpdateTokenStatus(tokenId, true);
 };
+
+async function executeMarkAsValid(tokenId) {
+    await executeUpdateTokenStatus(tokenId, false);
+}
 
 
 async function executeDeleteToken(tokenId) {
