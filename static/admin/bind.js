@@ -39,12 +39,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (activeTab === 'tokens') {
         const uploadForm = document.getElementById('uploadForm');
         const clearForm = document.getElementById('clearForm');
-        const tokensList = document.getElementById('tokensList');
-        const errorTokensList = document.getElementById('errorTokensList');
+        const allTokensList = document.getElementById('allTokensList');
         const tokensCountEl = document.getElementById('tokensCount');
         const errorTokensCountEl = document.getElementById('errorTokensCount');
 
-        if (!tokensList || !errorTokensList || !tokensCountEl || !errorTokensCountEl) {
+        if (!allTokensList || !tokensCountEl || !errorTokensCountEl) {
             console.error("One or more Token list/count elements not found.");
         } else {
             await loadTokens();

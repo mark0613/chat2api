@@ -191,40 +191,25 @@
 
                     <!-- Tokens 列表 -->
                     <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                        <h3 class="text-xl font-bold mb-4">可用 Tokens 列表</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="border p-2 text-left">Token</th>
-                                        <th class="border p-2 text-left">描述</th>
-                                        <th class="border p-2 text-left">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tokensList">
-                                    <tr>
-                                        <td colspan="3" class="border p-4 text-center text-gray-500">載入中...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <h3 class="text-xl font-bold mb-4">所有 Tokens 列表</h3>
+                        <div class="mb-4">
+                            <input type="text" id="tokenSearchInput" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="搜尋 token...">
                         </div>
-                    </div>
-
-                    <!-- 錯誤 Tokens 列表 -->
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <h3 class="text-xl font-bold mb-4">錯誤 Tokens 列表</h3>
                         <div class="overflow-x-auto">
                             <table class="w-full border-collapse">
                                 <thead>
                                     <tr class="bg-gray-100">
+                                        <th class="border p-2 text-left">ID</th>
                                         <th class="border p-2 text-left">Token</th>
                                         <th class="border p-2 text-left">描述</th>
+                                        <th class="border p-2 text-left">建立時間</th>
+                                        <th class="border p-2 text-left">狀態</th>
                                         <th class="border p-2 text-left">操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="errorTokensList">
+                                <tbody id="allTokensList">
                                     <tr>
-                                        <td colspan="3" class="border p-4 text-center text-gray-500">載入中...</td>
+                                        <td colspan="6" class="border p-4 text-center text-gray-500">載入中...</td>
                                     </tr>
                                 </tbody>
                             </table>
