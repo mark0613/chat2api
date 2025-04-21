@@ -11,23 +11,22 @@ class TokenCheckMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         # 不需要檢查 token 的路徑
         self.excluded_paths = [
-            '/login',
-            '/register',
-            '/user/login',
-            '/user/register',
-            '/logout',
+            # static
             '/static',
             '/favicon.ico',
-            '/api',
+            # docs
             '/docs',
             '/redoc',
+            # api
+            '/api',
+            '/v1',
+            # page
+            '/login',
+            '/register',
+            '/logout',
             '/token_error',
             '/403',
-            '/token/',
-            '/user/',
             '/admin',
-            '/v1',
-            '/api/',
         ]
 
     async def dispatch(self, request: Request, call_next):
