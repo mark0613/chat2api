@@ -42,57 +42,6 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
-def extract_token_from_auth_header(auth_header: str) -> str:
-    return auth_header[len("Bearer "):]
-
-def get_current_user(
-    auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
-    db: Session = Depends(get_db)
-):
-    if auth_token is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
-    
-    token = auth_token.credentials
-    data = decode_token(token)
-    
-    if data is None or "id" not in data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-    
-    user = db.query(User).filter(User.id == data["id"]).first()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-    
-    # Update last active timestamp
-    user.last_active = datetime.now(UTC)
-    db.commit()
-    
-    return user
-
-def get_verified_user(user: User = Depends(get_current_user)):
-    if user.role not in {"user", "admin"}:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access prohibited"
-        )
-    return user
-
-def get_admin_user(user: User = Depends(get_current_user)):
-    if user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access prohibited"
-        )
-    return user
-
 def get_current_user_from_cookie(
     request: Request,
     jwt: Optional[str] = Cookie(None),

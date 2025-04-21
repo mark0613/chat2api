@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, EmailStr
 
 from utils.database import get_db
-from apps.user.utils import create_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
+from apps.user.utils import create_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from apps.user.operations import UserOperation
 from apps.user.models import User
 
@@ -140,7 +140,3 @@ async def login_api(user_data: UserLogin, request: Request, response: Response, 
 async def logout_api(response: Response):
     response.delete_cookie(key="jwt")
     return {"message": "Successfully logged out"}
-
-@router.get("/me", response_model=UserProfile)
-async def get_user_profile(current_user: User = Depends(get_current_user)):
-    return current_user
