@@ -1,23 +1,22 @@
-from typing import Dict, Any
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from typing import Any, Dict
+
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from .manager import pipeline_manager
 
-router = APIRouter(prefix="/pipelines", tags=["pipelines"])
+router = APIRouter(prefix='/pipelines', tags=['pipelines'])
 
 
-@router.get("/list")
+@router.get('/list')
 async def list_pipelines(request: Request):
     try:
         pipelines = await pipeline_manager.get_pipeline_list()
-        return {"data": pipelines}
+        return {'data': pipelines}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error listing pipelines: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f'Error listing pipelines: {str(e)}')
 
 
-@router.post("/upload")
+@router.post('/upload')
 async def upload_pipeline(
     request: Request,
     file: UploadFile = File(...),
@@ -29,12 +28,10 @@ async def upload_pipeline(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error uploading pipeline: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f'Error uploading pipeline: {str(e)}')
 
 
-@router.delete("/delete")
+@router.delete('/delete')
 async def delete_pipeline(request: Request, id: str):
     try:
         result = await pipeline_manager.delete_pipeline(id)
@@ -42,12 +39,10 @@ async def delete_pipeline(request: Request, id: str):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error deleting pipeline: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f'Error deleting pipeline: {str(e)}')
 
 
-@router.get("/{pipeline_id}/valves")
+@router.get('/{pipeline_id}/valves')
 async def get_pipeline_valves(
     request: Request,
     pipeline_id: str,
@@ -57,10 +52,10 @@ async def get_pipeline_valves(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting valves: {str(e)}")
+        raise HTTPException(status_code=500, detail=f'Error getting valves: {str(e)}')
 
 
-@router.get("/{pipeline_id}/valves/spec")
+@router.get('/{pipeline_id}/valves/spec')
 async def get_pipeline_valves_specs(
     request: Request,
     pipeline_id: str,
@@ -70,19 +65,18 @@ async def get_pipeline_valves_specs(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error getting valve specs: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f'Error getting valve specs: {str(e)}')
 
 
-@router.post("/{pipeline_id}/valves/update")
+@router.post('/{pipeline_id}/valves/update')
 async def update_pipeline_valves(
     request: Request,
-    pipeline_id: str, valves: Dict[str, Any],
+    pipeline_id: str,
+    valves: Dict[str, Any],
 ):
     try:
         return await pipeline_manager.update_pipeline_valves(pipeline_id, valves)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating valves: {str(e)}")
+        raise HTTPException(status_code=500, detail=f'Error updating valves: {str(e)}')

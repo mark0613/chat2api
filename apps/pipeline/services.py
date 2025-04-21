@@ -1,8 +1,10 @@
-import aiohttp
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from utils.Logger import logger
+import aiohttp
+
 from utils.configs import pipeline_api_url, pipeline_enable
+from utils.Logger import logger
+
 from .manager import pipeline_manager
 
 # XXX: 暫時假定所有 pipeline 的 "pipelines" 欄位都是 *
@@ -16,34 +18,28 @@ async def process_pipeline_inlet_filter(
     if not pipeline_enable:
         return payload
 
-    filters = [
-        pipeline["id"] for pipeline in pipeline_manager.pipelines_cache.values()
-    ]
+    filters = [pipeline['id'] for pipeline in pipeline_manager.pipelines_cache.values()]
 
     async with aiohttp.ClientSession() as session:
         for filter in filters:
-            request_data = {"user": user, "body": payload}
+            request_data = {'user': user, 'body': payload}
             headers = pipeline_manager.headers
 
             try:
                 async with session.post(
-                    f"{pipeline_api_url}/{filter}/filter/inlet",
+                    f'{pipeline_api_url}/{filter}/filter/inlet',
                     json=request_data,
                     headers=headers,
                     timeout=10,
                 ) as response:
                     payload = await response.json()
                     response.raise_for_status()
-            except aiohttp.ClientResponseError as e:
-                res = (
-                    await response.json()
-                    if response.content_type == "application/json"
-                    else {}
-                )
-                if "detail" in res:
-                    raise Exception(res["detail"])
+            except aiohttp.ClientResponseError:
+                res = await response.json() if response.content_type == 'application/json' else {}
+                if 'detail' in res:
+                    raise Exception(res['detail'])
             except Exception as e:
-                logger.exception(f"Connection error: {e}")
+                logger.exception(f'Connection error: {e}')
 
     return payload
 
@@ -55,35 +51,31 @@ async def process_pipeline_outlet_filter(
     if not pipeline_enable:
         return payload
 
-    filters = [
-        pipeline["id"] for pipeline in pipeline_manager.pipelines_cache.values()
-    ]
+    filters = [pipeline['id'] for pipeline in pipeline_manager.pipelines_cache.values()]
 
     async with aiohttp.ClientSession() as session:
         for filter in filters:
-            request_data = {"user": user, "body": payload}
+            request_data = {'user': user, 'body': payload}
             headers = pipeline_manager.headers
             try:
                 async with session.post(
-                    f"{pipeline_api_url}/{filter}/filter/outlet",
+                    f'{pipeline_api_url}/{filter}/filter/outlet',
                     json=request_data,
                     headers=headers,
                     timeout=10,
                 ) as response:
                     payload = await response.json()
                     response.raise_for_status()
-            except aiohttp.ClientResponseError as e:
+            except aiohttp.ClientResponseError:
                 try:
                     res = (
-                        await response.json()
-                        if response.content_type == "application/json"
-                        else {}
+                        await response.json() if response.content_type == 'application/json' else {}
                     )
-                    if "detail" in res:
-                        raise Exception(response.status, res["detail"])
+                    if 'detail' in res:
+                        raise Exception(response.status, res['detail'])
                 except Exception:
                     pass
             except Exception as e:
-                logger.exception(f"Connection error: {e}")
+                logger.exception(f'Connection error: {e}')
 
     return payload

@@ -1,0 +1,35 @@
+[tool.black]
+include = '\.pyi?$'
+extend-exclude = '''
+(
+    \.git/
+    | \.ruff_cache/
+    | /logs/
+    | /media/
+    | /static/
+    | /venv/
+)
+'''
+line-length = 100
+
+[tool.ruff]
+lint.select = [
+    "Q",
+    "I",
+    "F401",
+]
+lint.exclude = [
+    ".git",
+    ".ruff_cache",
+    "logs",
+    "media",
+    "static",
+    "venv",
+]
+lint.ignore-init-module-imports = true
+line-length = 100
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+multiline-quotes = "double"
+docstring-quotes = "double"

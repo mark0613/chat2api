@@ -1,22 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from apps.token.operations import (
-    get_all_tokens,
-    get_all_error_tokens,
     add_token,
-    mark_token_as_error,
+    clear_all_tokens,
     delete_token,
-    clear_all_tokens
+    get_all_error_tokens,
+    get_all_tokens,
+    mark_token_as_error,
 )
 from utils.database import get_db
 from utils.Logger import logger
 
-router = APIRouter(prefix="/token", tags=["token"])
+router = APIRouter(prefix='/token', tags=['token'])
 
 
-@router.get("/list")
+@router.get('/list')
 def list_tokens(
     request: Request,
     db: Session = Depends(get_db),
@@ -24,83 +23,88 @@ def list_tokens(
     # 獲取 token 列表
     tokens = get_all_tokens(db)
     error_tokens = get_all_error_tokens(db)
-    
+
     return {
-        "tokens": [{"id": t.id, "token": t.token, "description": t.description, "created_at": t.created_at} for t in tokens],
-        "error_tokens": [{"id": t.id, "token": t.token, "description": t.description, "created_at": t.created_at} for t in error_tokens],
+        'tokens': [
+            {
+                'id': t.id,
+                'token': t.token,
+                'description': t.description,
+                'created_at': t.created_at,
+            }
+            for t in tokens
+        ],
+        'error_tokens': [
+            {
+                'id': t.id,
+                'token': t.token,
+                'description': t.description,
+                'created_at': t.created_at,
+            }
+            for t in error_tokens
+        ],
     }
 
 
-@router.post("/add")
+@router.post('/add')
 def add_new_token(
     request: Request,
     token: str = Form(...),
     description: str = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """添加新的 token"""
-    user = getattr(request.state, "user", None)
+    user = getattr(request.state, 'user', None)
 
     if not token or not description:
-        raise HTTPException(status_code=400, detail="Token and description cannot be empty")
-    
+        raise HTTPException(status_code=400, detail='Token and description cannot be empty')
+
     try:
         _, error_message = add_token(db, token, description, user.id)
         if error_message:
-            if "已存在" in error_message:
+            if '已存在' in error_message:
                 raise HTTPException(status_code=409, detail=error_message)
             raise HTTPException(status_code=500, detail=error_message)
-            
-        return {"status": "success", "message": "Token added successfully"}
+
+        return {'status': 'success', 'message': 'Token added successfully'}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error adding token: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error adding token: {str(e)}")
+        logger.error(f'Error adding token: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Error adding token: {str(e)}')
 
 
-@router.post("/delete/{token_id}")
-def remove_token(
-    request: Request,
-    token_id: int,
-    db: Session = Depends(get_db)
-):
+@router.post('/delete/{token_id}')
+def remove_token(request: Request, token_id: int, db: Session = Depends(get_db)):
     """刪除指定的 token"""
 
     try:
         success = delete_token(db, token_id)
         if not success:
-            raise HTTPException(status_code=404, detail="Token not found")
-                
-        return {"status": "success", "message": "Token deleted successfully"}
+            raise HTTPException(status_code=404, detail='Token not found')
+
+        return {'status': 'success', 'message': 'Token deleted successfully'}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting token: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error deleting token: {str(e)}")
+        logger.error(f'Error deleting token: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Error deleting token: {str(e)}')
 
 
-@router.post("/clear")
-def clear_tokens(
-    request: Request,
-    db: Session = Depends(get_db)
-):
+@router.post('/clear')
+def clear_tokens(request: Request, db: Session = Depends(get_db)):
     """清空所有 token"""
 
     try:
         clear_all_tokens(db)
-        return {"status": "success", "message": "All tokens cleared successfully"}
+        return {'status': 'success', 'message': 'All tokens cleared successfully'}
     except Exception as e:
-        logger.error(f"Error clearing tokens: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error clearing tokens: {str(e)}")
+        logger.error(f'Error clearing tokens: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Error clearing tokens: {str(e)}')
 
 
-@router.post("/mark-error/{token_id}")
-def mark_token_error(
-    request: Request,
-    token_id: int,
-    db: Session = Depends(get_db)
-):
+@router.post('/mark-error/{token_id}')
+def mark_token_error(request: Request, token_id: int, db: Session = Depends(get_db)):
     """將指定 token 標記為錯誤"""
 
     token = None
@@ -108,13 +112,13 @@ def mark_token_error(
         if t.id == token_id:
             token = t
             break
-    
+
     if not token:
-        raise HTTPException(status_code=404, detail="Token not found")
-    
+        raise HTTPException(status_code=404, detail='Token not found')
+
     try:
         mark_token_as_error(db, token.token)
-        return {"status": "success", "message": "Token marked as error successfully"}
+        return {'status': 'success', 'message': 'Token marked as error successfully'}
     except Exception as e:
-        logger.error(f"Error marking token as error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error marking token as error: {str(e)}")
+        logger.error(f'Error marking token as error: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Error marking token as error: {str(e)}')
