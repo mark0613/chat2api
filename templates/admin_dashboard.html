@@ -38,7 +38,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
-                            儀表板
+                            Dashboard
                         </div>
                     </a>
                 </li>
@@ -48,7 +48,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                             </svg>
-                            使用者管理
+                            Users
                         </div>
                     </a>
                 </li>
@@ -58,7 +58,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                             </svg>
-                            Token 管理
+                            Tokens
                         </div>
                     </a>
                 </li>
@@ -66,7 +66,7 @@
                     <a href="/admin/pipelines" class="block p-2 rounded {{ 'bg-blue-600' if active_tab == 'pipelines' else 'hover:bg-gray-700' }}">
                         <div class="flex items-center">
                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" viewBox="0 0 20 20" fill="currentColor"> <path d="M3 3a1 1 0 000 2v11a1 1 0 100 2h14a1 1 0 100-2V5a1 1 0 100-2H3zm2.707 3.707a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L9 9.586 5.707 6.707z" /> </svg>
-                            Pipeline 管理
+                            Pipelines
                         </div>
                     </a>
                 </li>
@@ -76,7 +76,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
-                            返回首頁
+                            ChatGPT
                         </div>
                     </a>
                 </li>
@@ -100,13 +100,13 @@
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
                     {% if active_tab == 'dashboard' %}
-                        儀表板
+                        Dashboard
                     {% elif active_tab == 'users' %}
-                        使用者管理
+                        Users
                     {% elif active_tab == 'tokens' %}
-                        Token 管理
+                        Tokens
                     {% elif active_tab == 'pipelines' %}
-                        Pipeline 管理
+                        Pipelines
                     {% endif %}
                 </h2>
                 <div class="text-sm text-gray-600">
@@ -115,36 +115,24 @@
             </div>
 
             {% if active_tab == 'dashboard' %}
-                <!-- 儀表板內容 -->
+                <!-- Dashboard內容 -->
                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                     <a href="/admin/users" class="bg-blue-100 p-6 rounded-lg shadow hover:shadow-lg hover:bg-blue-200 transition-all duration-200">
-                        <h3 class="text-xl font-semibold mb-2 text-blue-800">使用者管理</h3>
-                        <p class="text-blue-600">管理系統中的所有使用者帳號</p>
+                        <h3 class="text-xl font-semibold mb-2 text-blue-800">Users</h3>
+                        <p class="text-blue-600">管理 User</p>
                     </a>
                     <a href="/admin/tokens" class="bg-purple-100 p-6 rounded-lg shadow hover:shadow-lg hover:bg-purple-200 transition-all duration-200">
-                        <h3 class="text-xl font-semibold mb-2 text-purple-800">Token 管理</h3>
-                        <p class="text-purple-600">管理 ChatGPT API 的 Token</p>
+                        <h3 class="text-xl font-semibold mb-2 text-purple-800">Tokens</h3>
+                        <p class="text-purple-600">管理 Access Token</p>
                     </a>
                     <a href="/admin/pipelines" class="bg-indigo-100 p-6 rounded-lg shadow hover:shadow-lg hover:bg-indigo-200 transition-all duration-200">
-                        <h3 class="text-xl font-semibold mb-2 text-indigo-800">Pipeline 管理</h3>
-                        <p class="text-indigo-600">管理請求和回應的過濾器</p>
+                        <h3 class="text-xl font-semibold mb-2 text-indigo-800">Pipelines</h3>
+                        <p class="text-indigo-600">管理 Pipeline</p>
                     </a>
                     <a href="/" class="bg-green-100 p-6 rounded-lg shadow hover:shadow-lg hover:bg-green-200 transition-all duration-200">
-                        <h3 class="text-xl font-semibold mb-2 text-green-800">返回首頁</h3>
-                        <p class="text-green-600">回到 Chat2API 主頁面</p>
+                        <h3 class="text-xl font-semibold mb-2 text-green-800">ChatGPT</h3>
+                        <p class="text-green-600">前往 ChatGPT 頁面</p>
                     </a>
-                </div>
-
-                 <div class="mb-8">
-                    <h3 class="text-xl font-semibold mb-4 text-gray-800">系統資訊</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p class="mb-2">
-                            <span class="font-semibold text-gray-700">管理員:</span> {{ user.name }} ({{ user.email }})
-                        </p>
-                        <p>
-                            <span class="font-semibold text-gray-700">最後活動時間:</span> {{ user.last_active.strftime('%Y-%m-%d %H:%M:%S') if user.last_active else '未知' }}
-                        </p>
-                    </div>
                 </div>
 
             {% elif active_tab == 'users' %}

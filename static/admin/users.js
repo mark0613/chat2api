@@ -32,7 +32,7 @@ async function loadUsers() {
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         ${!isCurrentUser ? `
                             <button onclick="window.executeToggleUserActive(${user.id})" class="${user.active ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'} text-white py-1 px-2 rounded mr-2">
-                                ${user.active ? 'Disable' : 'Enable'}
+                                ${user.active ? '禁用' : '啟用'}
                             </button>
                             <button onclick="window.executeToggleUserRole(${user.id})" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">
                                 ${user.role === 'admin' ? '設為 User' : '設為 Admin'}
