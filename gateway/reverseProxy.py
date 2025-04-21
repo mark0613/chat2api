@@ -123,6 +123,8 @@ async def content_generator(r, token, history=True):
 
 
 async def chatgpt_reverse_proxy(request: Request, path: str):
+    # TODO: 加入 pipeline
+
     # 檢查是否為 backend-api 請求
     is_backend_api = "backend-api" in path
     try:

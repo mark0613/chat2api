@@ -39,3 +39,20 @@ body {
         display: flex;
     }
 }
+
+
+/* 上傳樣式 */
+.file-upload-area {
+    border: 2px dashed #cbd5e1;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.file-upload-area:hover {
+    background-color: #f7fafc;
+}
+
+.file-upload-area input[type="file"] {
+    display: none;
+}

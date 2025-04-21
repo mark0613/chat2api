@@ -81,3 +81,7 @@ class UserOperation:
         db.commit()
         db.refresh(user)
         return user
+
+    @staticmethod
+    def get_first_user(db: Session) -> Optional[User]:
+        return db.query(User).order_by(User.id).first()

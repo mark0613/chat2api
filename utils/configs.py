@@ -69,6 +69,11 @@ auto_seed = is_true(os.getenv('AUTO_SEED', True))
 force_no_history = is_true(os.getenv('FORCE_NO_HISTORY', False))
 no_sentinel = is_true(os.getenv('NO_SENTINEL', False))
 
+# Pipelines 相關配置
+pipeline_enable = is_true(os.getenv('PIPELINE_ENABLE', False))
+pipeline_api_url = os.getenv('PIPELINE_API_URL', '')
+pipeline_api_key = os.getenv('PIPELINE_API_KEY', '')
+
 with open('version.txt') as f:
     version = f.read().strip()
 
@@ -103,4 +108,7 @@ logger.info("------------------------- Gateway --------------------------")
 logger.info("ENABLE_GATEWAY:    " + str(enable_gateway))
 logger.info("AUTO_SEED:         " + str(auto_seed))
 logger.info("FORCE_NO_HISTORY: " + str(force_no_history))
+logger.info("------------------------- Pipelines -------------------------")
+logger.info("pipeline_enable:    " + str(pipeline_enable))
+logger.info("PIPELINE_API_URL: " + str(pipeline_api_url))
 logger.info("-" * 60)

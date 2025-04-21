@@ -1,4 +1,5 @@
 import warnings
+import asyncio
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Depends
@@ -7,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
+from apps.pipeline import pipeline_manager
 from middleware.auth import AuthMiddleware
 from middleware.token import TokenCheckMiddleware
 from middleware.role import RoleMiddleware
@@ -43,6 +45,7 @@ security_scheme = HTTPBearer()
 @app.on_event("startup")
 async def startup_event():
     init_db()
+    await pipeline_manager.init()
 
 from app import app
 
@@ -57,6 +60,7 @@ if enable_gateway:
     from apps.user import admin_views as user_admin_views
     from apps.token import routes as token_routes
     from apps.token import views as token_views
+    from apps.pipeline import routes as pipeline_routes
 
     # 中間件添加的順序與執行順序相反 - 後添加的先執行
     app.add_middleware(TokenCheckMiddleware)
@@ -69,6 +73,7 @@ if enable_gateway:
     app.include_router(user_routes.router, prefix="/api")
     app.include_router(token_routes.router, prefix="/api")
     app.include_router(user_admin_routes.router, prefix="/api")
+    app.include_router(pipeline_routes.router, prefix="/api")
 
     # Views
     app.include_router(user_views.router)

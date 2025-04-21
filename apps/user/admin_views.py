@@ -57,3 +57,20 @@ async def admin_tokens(
             "active_tab": "tokens",
         }
     )
+
+
+@router.get("/admin/pipelines", response_class=HTMLResponse)
+async def admin_pipelines(
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie),
+    db: Session = Depends(get_db)
+):
+    return templates.TemplateResponse(
+        "admin_dashboard.html", 
+        {
+            "request": request, 
+            "api_prefix": api_prefix,
+            "user": user,
+            "active_tab": "pipelines"
+        }
+    )

@@ -16,3 +16,4 @@ sqlalchemy
 alembic
 passlib[bcrypt]
 email-validator
+aiohttp

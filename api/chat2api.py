@@ -1,5 +1,7 @@
 import asyncio
 import types
+from functools import wraps
+from uuid import uuid4
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Request, HTTPException, Form, Security, Depends, Cookie, Header
@@ -13,12 +15,13 @@ from app import app, templates, security_scheme
 from chatgpt.ChatService import ChatService
 from chatgpt.authorization import refresh_all_tokens
 from utils.Logger import logger
-from utils.configs import api_prefix, scheduled_refresh, authorization_list
+from utils.configs import api_prefix, scheduled_refresh, authorization_list, pipeline_enable
 from utils.retry import async_retry
 from utils.database import get_db, get_db_context
 from apps.token.operations import mark_token_as_error, get_available_token
 from apps.user.utils import decode_token
 from apps.user.operations import UserOperation
+from apps.pipeline import process_pipeline_inlet_filter, process_pipeline_outlet_filter
 
 scheduler = AsyncIOScheduler()
 
@@ -62,7 +65,60 @@ async def to_send_conversation(request_data, req_token):
         raise HTTPException(status_code=500, detail="Server error")
 
 
-async def process(request_data, req_token):
+def convert_official_to_pipeline_output(input: dict, output: dict):
+    messages: list = input.get("messages", [])
+    messages.append({
+        "role": output['choices'][0]['message']['role'],
+        "content": output['choices'][0]['message']['content'],
+    })
+
+    metadata = input.get("metadata", {})
+
+    return {
+        "model": input['model'],
+        "messages": messages,
+        "chat_id": metadata["chat_id"],
+        "source_output": output,
+    }
+
+def convert_pipeline_to_official_output(data: dict):
+    return data["source_output"]
+
+def process_with_pipeline(func):
+    @wraps(func)
+    async def wrapper(request_data, req_token, user=None):
+        chat_id = str(uuid4())
+        request_data["metadata"] = {
+            "chat_id": chat_id,
+        }
+
+        # pipeline inlet
+        if pipeline_enable:
+            try:
+                user_info = {"id": user.id, "name": user.name, "email": user.email, "role": user.role} if user else {}
+                request_data = await process_pipeline_inlet_filter(request_data, user_info)
+            except Exception as e:
+                logger.error(f"Error processing pipeline inlet filter: {str(e)}")
+                raise HTTPException(status_code=400, detail=str(e))
+
+        # process
+        chat_service, res = await func(request_data, req_token, user=None)
+
+        # pipeline outlet
+        if pipeline_enable:
+            try:
+                user_info = {"id": user.id, "name": user.name, "email": user.email, "role": user.role} if user else {}
+                res = convert_official_to_pipeline_output(request_data, res)
+                res = await process_pipeline_outlet_filter(res, user_info)
+                res = convert_pipeline_to_official_output(res)
+            except Exception as e:
+                logger.error(f"Error processing pipeline outlet filter: {str(e)}")
+        return chat_service, res
+
+    return wrapper
+
+@process_with_pipeline
+async def process(request_data, req_token, user=None):
     chat_service = await to_send_conversation(request_data, req_token)
     await chat_service.prepare_send_conversation()
     res = await chat_service.send_conversation()
@@ -70,16 +126,19 @@ async def process(request_data, req_token):
 
 
 @app.post(f"/{api_prefix}/v1/chat/completions" if api_prefix else "/v1/chat/completions")
-async def send_conversation(request: Request, credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
+async def send_conversation(request: Request, credentials: HTTPAuthorizationCredentials = Security(security_scheme), db: Session = Depends(get_db)):
     # 獲取請求中的 token（必須提供）
     req_token = credentials.credentials
     
+    # TODO: 目前先固定，未來每個 user 都有自己的 api-keys
+    user = UserOperation.get_first_user(db)
+
     try:
         request_data = await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail={"error": "Invalid JSON body"})
     
-    chat_service, res = await async_retry(process, request_data, req_token)
+    chat_service, res = await async_retry(process, request_data, req_token, user)
     
     try:
         if isinstance(res, types.AsyncGeneratorType):

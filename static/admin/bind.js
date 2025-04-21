@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', async function () {
+    // 將 checkValveChanges 函數暴露為全局函數
+    window.checkValveChanges = checkValveChanges;
+    window.saveValveSettings = saveValveSettings;
+
     // 側邊欄切換功能
     const toggleSidebar = document.getElementById('toggleSidebar');
     const closeSidebar = document.getElementById('closeSidebar');
@@ -112,5 +116,12 @@ document.addEventListener('DOMContentLoaded', async function () {
                 console.warn("Element with ID 'clearForm' not found.");
             }
         }
+    }
+
+    // Pipeline 管理功能
+    if (window.activeTab === 'pipelines') {
+        initializeEventListeners();
+        initializeFileInput(); // 確保檔案輸入框正確初始化
+        loadPipelines();
     }
 });
