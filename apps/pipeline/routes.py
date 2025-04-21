@@ -1,14 +1,13 @@
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 
-from apps.user.utils import get_current_user_from_cookie
 from .manager import pipeline_manager
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
 
 
 @router.get("/list")
-async def list_pipelines(user=Depends(get_current_user_from_cookie)):
+async def list_pipelines(request: Request):
     try:
         pipelines = await pipeline_manager.get_pipeline_list()
         return {"data": pipelines}
@@ -20,7 +19,8 @@ async def list_pipelines(user=Depends(get_current_user_from_cookie)):
 
 @router.post("/upload")
 async def upload_pipeline(
-    file: UploadFile = File(...), user=Depends(get_current_user_from_cookie)
+    request: Request,
+    file: UploadFile = File(...),
 ):
     try:
         content = await file.read()
@@ -35,7 +35,7 @@ async def upload_pipeline(
 
 
 @router.delete("/delete")
-async def delete_pipeline(id: str, user=Depends(get_current_user_from_cookie)):
+async def delete_pipeline(request: Request, id: str):
     try:
         result = await pipeline_manager.delete_pipeline(id)
         return result
@@ -49,7 +49,8 @@ async def delete_pipeline(id: str, user=Depends(get_current_user_from_cookie)):
 
 @router.get("/{pipeline_id}/valves")
 async def get_pipeline_valves(
-    pipeline_id: str, user=Depends(get_current_user_from_cookie)
+    request: Request,
+    pipeline_id: str,
 ):
     try:
         return await pipeline_manager.get_pipeline_valves(pipeline_id)
@@ -61,7 +62,8 @@ async def get_pipeline_valves(
 
 @router.get("/{pipeline_id}/valves/spec")
 async def get_pipeline_valves_specs(
-    pipeline_id: str, user=Depends(get_current_user_from_cookie)
+    request: Request,
+    pipeline_id: str,
 ):
     try:
         return await pipeline_manager.get_pipeline_valves_specs(pipeline_id)
@@ -75,7 +77,8 @@ async def get_pipeline_valves_specs(
 
 @router.post("/{pipeline_id}/valves/update")
 async def update_pipeline_valves(
-    pipeline_id: str, valves: Dict[str, Any], user=Depends(get_current_user_from_cookie)
+    request: Request,
+    pipeline_id: str, valves: Dict[str, Any],
 ):
     try:
         return await pipeline_manager.update_pipeline_valves(pipeline_id, valves)

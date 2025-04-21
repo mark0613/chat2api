@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -22,22 +24,18 @@ class UserActivityMiddleware(BaseHTTPMiddleware):
         self.user_last_updates = {}
     
     async def dispatch(self, request: Request, call_next):
-        jwt = request.cookies.get("jwt")
-        if jwt:
+        user = getattr(request.state, "user", None)
+        if user:
             try:
-                await self._update_user_activity_if_needed(jwt)
+                await self._update_user_activity_if_needed(user)
             except Exception as e:
                 logger.error(f"更新用戶活動時間時發生錯誤: {str(e)}")
 
         response = await call_next(request)
         return response
     
-    async def _update_user_activity_if_needed(self, jwt: str):
-        decoded = decode_token(jwt)
-        if not decoded or "id" not in decoded:
-            return
-        
-        user_id = decoded["id"]
+    async def _update_user_activity_if_needed(self, user):
+        user_id = user.id
         current_time = time.time()
         
         if user_id not in self.user_last_updates or \
@@ -77,17 +75,13 @@ class UserActiveCheckMiddleware(BaseHTTPMiddleware):
         for path in self.whitelist_paths:
             if request.url.path.startswith(path):
                 return await call_next(request)
-        
-        jwt = request.cookies.get("jwt")
-        decoded = decode_token(jwt)
-        if not decoded or "id" not in decoded:
-            return await call_next(request)
-        user_id = decoded["id"]
 
-        with get_db_context() as db:
-            user = UserOperation.get_user_by_id(db, user_id)
-            if user and not user.active:
-                html_content = templates.TemplateResponse("waiting.html", {"request": request})
-                return HTMLResponse(content=html_content.body, status_code=200)
+        user: User = request.state.user
+        if not user:
+            return await call_next(request)
+            
+        if not user.active:
+            html_content = templates.TemplateResponse("waiting.html", {"request": request})
+            return HTMLResponse(content=html_content.body, status_code=200)
 
         return await call_next(request)

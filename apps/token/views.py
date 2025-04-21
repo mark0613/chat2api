@@ -9,24 +9,16 @@ from apps.user.operations import UserOperation
 from utils.configs import api_prefix
 from utils.database import get_db
 from starlette.templating import Jinja2Templates
+from apps.user.models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/token_error")
-async def token_error_page(
-    request: Request,
-    jwt: Optional[str] = Cookie(None),
-    db: Session = Depends(get_db)
-):
+async def token_error_page(request: Request):
     """token 錯誤頁面"""
-    user = None
-    if jwt:
-        decoded = decode_token(jwt)
-        if decoded and "id" in decoded:
-            user = UserOperation.get_user_by_id(db, decoded["id"])
-    
+    user: User = request.state.user
     return templates.TemplateResponse(
         "token_error.html",
         {

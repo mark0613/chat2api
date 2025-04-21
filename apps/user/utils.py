@@ -41,31 +41,3 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
         return decoded
     except Exception:
         return None
-
-def get_current_user_from_cookie(
-    request: Request,
-    jwt: Optional[str] = Cookie(None),
-    db: Session = Depends(get_db)
-):
-    if not jwt:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
-    
-    data = decode_token(jwt)
-    
-    if data is None or "id" not in data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-    
-    user = db.query(User).filter(User.id == data["id"]).first()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-    
-    return user

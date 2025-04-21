@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from apps.user.operations import UserOperation
-from apps.user.utils import get_current_user_from_cookie
 from apps.user.models import User
 from utils.database import get_db
 from utils.Logger import logger
@@ -38,12 +37,14 @@ def list_users(
 
 @router.post("/users/{user_id}/update")
 async def update_user(
+    request: Request,
     user_id: int,
     active: Optional[str] = Form(None),
     role: Optional[str] = Form(None),
-    user: User = Depends(get_current_user_from_cookie),
     db: Session = Depends(get_db)
 ):
+    user: User = request.state.user
+
     try:
         target_user = UserOperation.get_user_by_id(db, user_id)
         if not target_user:

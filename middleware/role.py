@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import Request, HTTPException, status
 from fastapi.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -30,20 +32,11 @@ class RoleMiddleware(BaseHTTPMiddleware):
         
         # 如果是受保護的路徑，檢查用戶角色
         if is_protected:
-            jwt = request.cookies.get("jwt")
-            if not jwt:
+            user: User = request.state.user
+            if not user:
                 return RedirectResponse(url="/login", status_code=303)
 
-            data = decode_token(jwt)
-            if not data or "id" not in data:
+            if user.role not in required_roles:
                 return RedirectResponse(url="/403", status_code=303)
-
-            with next(get_db()) as db:
-                user = db.query(User).filter(User.id == data["id"]).first()
-                if not user:
-                    return RedirectResponse(url="/403", status_code=303)
-
-                if user.role not in required_roles:
-                    return RedirectResponse(url="/403", status_code=303)
 
         return await call_next(request)
