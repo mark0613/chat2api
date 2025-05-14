@@ -9,6 +9,7 @@ from apps.token.operations import (
     get_all_tokens,
     update_token_status as update_token_status_operation,
     get_token_by_id,
+    fix_latest_token_error,
 )
 from utils.database import get_db
 from utils.Logger import logger
@@ -119,4 +120,15 @@ def update_token_status(
     except Exception as e:
         logger.error(f'Error updating token status: {str(e)}')
         raise HTTPException(status_code=500, detail=f'Error updating token status: {str(e)}')
-   
+
+
+@router.post('/try_fix')
+def try_fix_latest_token(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    success, message = fix_latest_token_error(db)
+    if success:
+        return {'status': 'success', 'message': 'Latest token error status fixed successfully'}
+    else:
+        raise HTTPException(status_code=400, detail=message)

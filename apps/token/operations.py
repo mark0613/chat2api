@@ -116,6 +116,17 @@ def clear_all_tokens(db: Session):
     return True
 
 
+def fix_latest_token_error(db: Session):
+    """找到最新創建的 token 並將其 is_error 狀態設為 False"""
+    latest_token = db.query(Token).order_by(Token.created_at.desc()).first()
+    if latest_token:
+        latest_token.is_error = False
+        db.commit()
+        logger.info(f'Fixed error status for latest token with id: {latest_token.id}')
+        return True, None
+    else:
+        return False, "No tokens found to fix."
+
 def has_active_tokens(db: Session):
     """檢查是否有可用的 token"""
     return db.query(Token).filter(Token.is_error == False).first() is not None

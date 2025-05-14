@@ -12,11 +12,27 @@
         <div class="text-7xl mb-6">😢</div>
         <p class="text-xl text-gray-700 mb-8">Token 有問題，請通知管理員檢查 Token</p>
 
+        <button id="tryFixButton" class="inline-block bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition duration-300 mb-4">嘗試修復</button>
+
         {% if user and user.role == "admin" %}
         <div class="mt-6">
             <a href="/admin/tokens" class="inline-block bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition duration-300">管理 Token</a>
         </div>
         {% endif %}
     </div>
+
+    <script>
+        document.getElementById('tryFixButton').addEventListener('click', async () => {
+            const response = await fetch('/api/token/try_fix', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (response.ok) {
+                window.location = '/';
+            }
+        });
+    </script>
 </body>
 </html>
