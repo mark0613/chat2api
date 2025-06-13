@@ -135,20 +135,6 @@
                 return response;
             } catch (error) {
                 console.error(`Fetch error: ${error.message}`);
-                // 如果是網路錯誤且請求為 backend-api，可能也是 token 問題
-                if (typeof resource === 'string' && resource.includes('backend-api')) {
-                    setTimeout(() => {
-                        window.location.href = '/token_error';
-                    }, 100);
-                    
-                    // 返回一個虛擬的錯誤響應
-                    return new Response(new Blob(['"Network Error"']), {
-                        status: 500,
-                        statusText: 'Network Error',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                }
-                // 如果捕獲到網路錯誤，則正常拋出
                 throw error;
             }
         };
