@@ -6,8 +6,6 @@ COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN python manage.py migration upgrade
+RUN chmod +x entrypoint.sh
 
-EXPOSE 5005
-
-CMD ["python", "app.py"]
+ENTRYPOINT [ "sh", "entrypoint.sh" ]
